@@ -1,0 +1,17 @@
+cocoon_media_management.content:
+  path: '/cocoon_media_management'
+  defaults:
+    _controller: '\Drupal\cocoon_media_management\Controller\CMMController::content'
+    _title: 'CMM Test'
+  requirements:
+    _permission: 'access content'
+
+cocoon_media_management.admin_settings:
+  path: '/admin/config/media/cmm_settings'
+  defaults:
+    _form: '\Drupal\cocoon_media_management\Form\CMMSettingsForm'
+    _title: 'Cocoon Media Management Settings'
+  options:
+    _admin_route: TRUE
+  requirements:
+    _permission: 'administer site configuration'
