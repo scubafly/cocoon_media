@@ -45,7 +45,7 @@ class CocoonController {
 		try {
 			$output = self::SoapClient(
 				$this->getRequestId(),
-				$this->subDomain,
+				$this->subdomain,
 				$this->username,
 				$this->secretkey)->getThumbtypes();
 		} catch ( SoapFault $oSoapFault ) {
@@ -128,7 +128,7 @@ class CocoonController {
 
 		if ( $aFile['upload_date'] ) {
 			$date         = date_create( $aFile['upload_date'] );
-			$fileUploaded = date_format( $date, get_option( 'date_format' ) );
+			$fileUploaded = $date;
 		} else {
 			$fileUploaded = '';
 		}

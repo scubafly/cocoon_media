@@ -1,0 +1,35 @@
+<?php
+
+/**
+ * @file
+ * The module file.
+ */
+
+use Drupal\Core\Render\Markup;
+
+/**
+ * Implements hook_theme().
+ */
+function cocoon_media_management_theme($existing, $type, $theme, $path) {
+  $variables = array(
+    'tablegridselect' => array (
+      'render element' => 'element',
+      'template' => 'table_gridselect',
+    ),
+  );
+
+  return $variables;
+}
+
+// /**
+//  * Template preprocess function for Lorem ipsum.
+//  *
+//  * @param array $variables
+//  *   An associative array containing:
+//  *   - source_text
+//  */
+// function template_preprocess_cocoon_media_management(&$variables) {
+//   foreach ($variables['source_text'] as $idx => $media_item) {
+//     $variables['source_text'][$idx] = $media_item;
+//   }
+// }

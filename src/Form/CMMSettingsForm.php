@@ -64,7 +64,7 @@ class CMMSettingsForm extends ConfigFormBase {
       '#value' => t('Test API'),
       '#name' => 'testapi',
       '#ajax' => array(
-        'callback' => array($this, 'ajaxCallback'),
+        'callback' => array($this, 'ajaxCallbackTestApi'),
         'wrapper' => 'cocoon-output',
         'effect' => 'fade',
       ),
@@ -96,7 +96,7 @@ class CMMSettingsForm extends ConfigFormBase {
     return parent::submitForm($form, $form_state);
   }
 
-  public function ajaxCallback(array &$form, FormStateInterface &$form_state) {
+  public function ajaxCallbackTestApi(array &$form, FormStateInterface &$form_state) {
     $config = $this->config('CMM.settings');
     $cocoonController = new CocoonController(
     $config->get('CMM.domain'),

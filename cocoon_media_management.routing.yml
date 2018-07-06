@@ -7,7 +7,7 @@ cocoon_media_management.content:
     _permission: 'access content'
 
 cocoon_media_management.admin_settings:
-  path: '/admin/config/media/cmm_settings'
+  path: '/admin/config/media/cocoon_media_settings'
   defaults:
     _form: '\Drupal\cocoon_media_management\Form\CMMSettingsForm'
     _title: 'Cocoon Media Management Settings'
@@ -15,3 +15,14 @@ cocoon_media_management.admin_settings:
     _admin_route: TRUE
   requirements:
     _permission: 'administer site configuration'
+
+cocoon_media_management.cocoon_media_add:
+  path: '/media/add/cocoon_media_add'
+  defaults:
+    _form: '\Drupal\cocoon_media_management\Form\CMMAddMediaForm'
+    _title: 'Browse Cocoon Media'
+  options:
+    _admin_route: TRUE
+  requirements:
+    _permission: 'administer site configuration'
+
