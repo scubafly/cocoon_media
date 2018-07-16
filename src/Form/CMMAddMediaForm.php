@@ -105,7 +105,7 @@ class CMMAddMediaForm extends ConfigFormBase {
     }
     $form['actions']['submit'] = [
       '#type' => 'submit',
-      '#value' => $this->t('Downlad Media'),
+      '#value' => $this->t('Download Media'),
       '#button_type' => 'primary',
     ];
     return $form;
@@ -154,64 +154,69 @@ class CMMAddMediaForm extends ConfigFormBase {
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
     $values = $form_state->getValues();
-    $selected_image_id = $values['cocoon_media_browser']['images_table'];
-    if($selected_image_id) {
-      $file_info = $this->cocoonController->getThumbInfo($selected_image_id);
-      $url = $file_info['path'];
-      // Check the cache and download the file if needed.
-      $file = $this->retrieveRemoteFile($url);
-      $media_bundle = 'file';
-      if ( $file_info['ext'] === 'jpg' ||
-           $file_info['ext'] === 'png' ||
-           $file_info['ext'] === 'gif' ||
-           $file_info['ext'] === 'tiff' ||
-           $file_info['ext'] === 'bmp'
-      ) {
-        $media_bundle = 'image';
-        $field_media_name = 'field_media_image';
-        $field_media_arr = [
-          'target_id' => $file->id(),
-          'alt' => $file_info['name'],
-          'title' => t($file_info['name']),
-        ];
-      }
-      else if($file_info['ext'] === 'mp4'||
-           $file_info['ext'] === 'avi'||
-           $file_info['ext'] === 'flv'||
-           $file_info['ext'] === 'mov') {
-        $media_bundle = 'video';
-        $field_media_name = 'field_media_video_file';
-        $field_media_arr = [
-          'target_id' => $file->id(),
-          'alt' => $file_info['name'],
-          'title' => t($file_info['name']),
-        ];
-      }
-      else {
+    $selected_images = $values['cocoon_media_browser']['images_table'];
+    $filenames = '';
+    foreach($selected_images as $selected_image_id) {
+      if($selected_image_id) {
+        $file_info = $this->cocoonController->getThumbInfo($selected_image_id);
+        $url = $file_info['path'];
+        // Check the cache and download the file if needed.
+        $file = $this->retrieveRemoteFile($url);
         $media_bundle = 'file';
-        $field_media_name = 'field_media_file';
-        $field_media_arr = [
-          'target_id' => $file->id(),
-          'title' => t($file_info['name']),
-        ];
+        if ( $file_info['ext'] === 'jpg' ||
+            $file_info['ext'] === 'jpeg' ||
+            $file_info['ext'] === 'png' ||
+            $file_info['ext'] === 'gif' ||
+            $file_info['ext'] === 'tiff' ||
+            $file_info['ext'] === 'bmp'
+        ) {
+          $media_bundle = 'image';
+          $field_media_name = 'field_media_image';
+          $field_media_arr = [
+            'target_id' => $file->id(),
+            'alt' => $file_info['name'],
+            'title' => t($file_info['name']),
+          ];
+        }
+        else if($file_info['ext'] === 'mp4'||
+            $file_info['ext'] === 'avi'||
+            $file_info['ext'] === 'flv'||
+            $file_info['ext'] === 'mov') {
+          $media_bundle = 'video';
+          $field_media_name = 'field_media_video_file';
+          $field_media_arr = [
+            'target_id' => $file->id(),
+            'alt' => $file_info['name'],
+            'title' => t($file_info['name']),
+          ];
+        }
+        else {
+          $media_bundle = 'file';
+          $field_media_name = 'field_media_file';
+          $field_media_arr = [
+            'target_id' => $file->id(),
+            'title' => t($file_info['name']),
+          ];
 
+        }
+        // Create media entity with saved file.
+        $image_media = Media::create([
+          'bundle' => $media_bundle,
+          'uid' => \Drupal::currentUser()->id(),
+          'langcode' => \Drupal::languageManager()->getDefaultLanguage()->getId(),
+          'name' => $file_info['name'],
+          $field_media_name => $field_media_arr,
+        ]);
+        $image_media->save();
+        $filenames .= $file_info['name'] . ', ';
       }
-      // Create media entity with saved file.
-      $image_media = Media::create([
-        'bundle' => $media_bundle,
-        'uid' => \Drupal::currentUser()->id(),
-        'langcode' => \Drupal::languageManager()->getDefaultLanguage()->getId(),
-        'name' => $file_info['name'],
-        $field_media_name => $field_media_arr,
-       ]);
-      $image_media->save();
     }
     // Redirecting to the media library page.
     $media_url = Url::fromRoute('entity.media.collection');
     $form_state->setRedirectUrl($media_url);
-    $filename = $file_info['name'];
+    $filenames = substr($filenames, 0, -2);
     // Adding custom message.
-    drupal_set_message($this->t("The File <i>$filename</i> has been added to the media library."));
+    drupal_set_message($this->t("The File(s) <i>$filenames</i> has been added to the media library."));
   }
 
   public function buildOptionsElements($set_id) {
@@ -284,7 +289,7 @@ class CMMAddMediaForm extends ConfigFormBase {
       '#header' => $header,
       '#options' => $options,
       '#empty' => $this->t('No media found'),
-      '#multiple' => FALSE,
+      '#multiple' => TRUE,
       '#attributes' => ['id' => $class_id],
       '#cache' => [
         'max-age' => 60 * 60 * 24, // Cached for one day.

@@ -115,9 +115,11 @@ class CocoonController {
 		$extention = strtolower( $aFile['extension'] );
 
 		if ( $extention === 'jpg' ||
+		     $extention === 'jpeg' ||
 		     $extention === 'png' ||
 		     $extention === 'gif' ||
 		     $extention === 'tiff' ||
+		     $extention === 'tif' ||
 		     $extention === 'bmp'
 		) {
 			$noThumb = false;
@@ -135,7 +137,7 @@ class CocoonController {
 
 		return array(
 			'path'     => $url . $thumbOrgPath . '/' . $filename . '.' . $extention,
-			'web'      => ! $noThumb ? $url . $thumbWebPath . '/' . $filename . '.' . $extention : '',
+			'web'      => ! $noThumb ? $url . $thumbWebPath . '/' . $filename . '.jpg' : '',
 			'ext'      => $extention,
 			'name'     => $filename,
 			'dim'      => $fileDim,

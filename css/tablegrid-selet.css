@@ -9,38 +9,35 @@
 .cocoon-media-management-add-media-form table tbody {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
+  justify-content: flex-start;
 }
 
 .cocoon-media-management-add-media-form table tbody tr {
   display: flex;
   border-bottom: none;
-  width: 250px;
+    width: 20%;
   padding: 0;
 }
 
-@media (max-width: 1024px) {
-  .cocoon-media-management-add-media-form table tbody {
-    justify-content: space-around;
+@media (max-width: 1300px) {
+  .cocoon-media-management-add-media-form table tbody tr {
+    width: 25%;
   }
+}
+
+@media (max-width: 1024px) {
   .cocoon-media-management-add-media-form table tbody tr {
     width: 33.3%;
   }
 }
 
 @media (max-width: 940px) {
-  .cocoon-media-management-add-media-form table tbody {
-    justify-content: space-around;
-  }
   .cocoon-media-management-add-media-form table tbody tr {
     width: 50%;
   }
 }
 
 @media (max-width: 600px) {
-  .cocoon-media-management-add-media-form table tbody {
-    justify-content: space-around;
-  }
   .cocoon-media-management-add-media-form table tbody tr {
     width: 100%;
   }
@@ -90,6 +87,7 @@
 
 .cocoon-media-management-add-media-form table tbody tr .media-title {
   height: 4em;
+  word-break: break-all;
 }
 
 .cocoon-media-management-add-media-form table tbody tr fieldset {
