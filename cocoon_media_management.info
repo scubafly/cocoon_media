@@ -4,6 +4,8 @@ core = 7.x
 
 package = Cocoon Media Management
 
+configure = admin/config/media/cocoon_settings
+
 dependencies[] = media
 dependencies[] = media_internet
 
