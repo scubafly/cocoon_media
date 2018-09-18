@@ -1,0 +1,10 @@
+name = Cocoon Media Management
+description = This plugin sends/requests the stored media from the Cocoon web service and gets the corresponding media for easy usage in Drupal.
+core = 7.x
+
+package = Cocoon Media Management
+
+dependencies[] = media
+dependencies[] = media_internet
+
+files[] = /lib/CocoonController.php

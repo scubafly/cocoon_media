@@ -5,31 +5,84 @@
  * The module file.
  */
 
-use Drupal\Core\Render\Markup;
+function cocoon_media_management_menu() {
+  $items['admin/config/media/cocoon_settings'] = array(
+    'title' => 'Cocoon Media Settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('cocoon_media_management_admin'),
+    'access arguments' => array('access administration pages'),
+    'type' => MENU_NORMAL_ITEM,
+     'file' => 'cocoon_media_management.admin.inc',
+  );
+
+  $items['file/add/cocoon_media_add'] = array(
+    'title' => 'Cocoon Media',
+    'description' => 'Browse Cocoon Media to add to your media library.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('cocoon_media_management_external'),
+    'access arguments' => array('access media browser'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'file_entity.pages.inc',
+    'file path' => drupal_get_path('module', 'file_entity'),
+  );
+
+   return $items;
+ }
 
 /**
  * Implements hook_theme().
  */
-function cocoon_media_management_theme($existing, $type, $theme, $path) {
-  $variables = array(
-    'tablegridselect' => array (
-      'render element' => 'element',
-      'template' => 'table_gridselect',
-    ),
-  );
+  function cocoon_media_management_theme($existing, $type, $theme, $path) {
+    return array(
+      'cocoon_media_list' => array(
+        'variables' => array(
+          'images' => NULL,
+        ),
+        'template' => 'cocoon-media-list',
+        'path' => drupal_get_path('module', 'cocoon_media') . '/templates',
+      ),
+    );
+  }
+  
+/**
+ * Implements hook_forms().
+ */
+function cocoon_media_management_forms($form_id, $args) {
+  $forms = array();
 
-  return $variables;
+  // Create a copy of the upload wizard form for internet media.
+  if ($form_id == 'cocoon_media_management_external') {
+    $forms[$form_id] = array(
+      'callback' => 'file_entity_add_upload',
+    );
+  }
+
+  return $forms;
 }
+ 
+ function cocoon_media_management_get_setting($setting = '') {
+   $cocoon_settings =variable_get('cocoon_media_settings', array());
+   if(empty($setting)) {
+     $return_value = $cocoon_settings;
+   }
+   else {
+     $return_value = !empty($cocoon_settings[$setting]) ? $cocoon_settings[$setting] : '';
+   }
+   return $return_value;
+  }
+ 
+// use Drupal\Core\Render\Markup;
 
 // /**
-//  * Template preprocess function for Lorem ipsum.
-//  *
-//  * @param array $variables
-//  *   An associative array containing:
-//  *   - source_text
+//  * Implements hook_theme().
 //  */
-// function template_preprocess_cocoon_media_management(&$variables) {
-//   foreach ($variables['source_text'] as $idx => $media_item) {
-//     $variables['source_text'][$idx] = $media_item;
-//   }
+// function cocoon_media_management_theme($existing, $type, $theme, $path) {
+//   $variables = array(
+//     'tablegridselect' => array (
+//       'render element' => 'element',
+//       'template' => 'table_gridselect',
+//     ),
+//   );
+
+//   return $variables;
 // }
