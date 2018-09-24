@@ -10,3 +10,4 @@ dependencies[] = media
 dependencies[] = media_internet
 
 files[] = /lib/CocoonController.php
+files[] = \lib\CocoonMedia.inc

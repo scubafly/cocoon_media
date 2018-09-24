@@ -6,7 +6,7 @@
  * )
  */
 class CocoonController {
-	public static $domainName = 'use-cocoon.com';
+	public static $domainName = 'use-cocoon.nl';
 
 	public $thumbsPerPage = 24;
 	public $subdomain = '';
@@ -106,7 +106,7 @@ class CocoonController {
 
 		$aThumbTypes  = $this->getThumbTypes();
 		$thumbOrgPath = $aThumbTypes[ $thumbOrg ]['path'];
-		$thumbWebPath = $aThumbTypes[ $thumbWeb ]['path'];
+		$thumbWebPath = '/embed/process-file/type/400px/file';//$aThumbTypes[ $thumbWeb ]['path'];
 
 		$aFile     = $this->getFile( $fileId );
 		$filename  = $aFile['filename'];

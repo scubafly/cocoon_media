@@ -70,6 +70,7 @@ function cocoon_media_management_forms($form_id, $args) {
 
   // Create a copy of the upload wizard form for internet media.
   if ($form_id == 'cocoon_media_management_external') {
+    drupal_add_css(drupal_get_path('module', 'cocoon_media_management') . '/css/tablegrid-selet.css');
     $forms[$form_id] = array(
       'callback' => 'file_entity_add_upload',
     );
@@ -82,7 +83,9 @@ function cocoon_media_management_forms($form_id, $args) {
  * Implements hook_form_FORM_ID_alter().
  */
 function cocoon_media_management_form_file_entity_add_upload_alter(&$form, &$form_state, $form_id) {
-  if ($form_id == 'cocoon_media_management_external') {
+  $step = $form['#step'];
+  if ($form_id == 'cocoon_media_management_external' && $step == 1) {
+    unset($form['upload']);
     $domain = cocoon_media_management_get_setting('cocoon_domain');
     $username = cocoon_media_management_get_setting('cocoon_username');
     $api_key = cocoon_media_management_get_setting('cocoon_api_key');
@@ -142,11 +145,32 @@ function cocoon_media_management_form_file_entity_add_upload_alter(&$form, &$for
         )),
       );
     }
-    $form['actions']['submit'] = [
-      '#type' => 'submit',
-      '#value' => t('Download Media'),
-      '#button_type' => 'primary',
-    ];
+    // $form['actions']['submit'] = [
+    //   '#type' => 'submit',
+    //   '#value' => t('Download Media'),
+    //   '#button_type' => 'primary',
+    // ];
+  
+    // Create an array to hold potential Internet media providers.
+    $providers = array();
+
+    // Determine if there are any visible providers.
+    foreach (media_internet_get_providers() as $key => $provider) {
+      if (empty($provider['hidden']) || $provider['hidden'] != TRUE) {
+        $providers[] = check_plain($provider['title']);
+      }
+    }
+
+    $form['#validators'] = array();
+
+    if (!empty($options['types'])) {
+      $form['#validators']['media_file_validate_types'] = array($options['types']);
+    }
+
+    // Add validation and submission handlers to the form and ensure that they
+    // run first.
+    array_unshift($form['#validate'], 'cocoon_media_add_validate');
+    array_unshift($form['#submit'], 'media_internet_add_submit');
   }
   return $form;
 }
@@ -155,13 +179,15 @@ function retrieveRemoteFile($url, $local_url = '', $to_temp = false) {
   // Check the cache and download the file if needed.
   $parsed_url = drupal_parse_url($url);
   $cocoon_dir = 'cocoon_media_files';
-  $cocon_media_directory = 'public://' . $cocoon_dir . '/';
-  file_prepare_directory($cocon_media_directory, FILE_CREATE_DIRECTORY);
+  $cocon_media_directory = 'public://'. $cocoon_dir;
+  $is_dir_created = file_prepare_directory($cocon_media_directory, FILE_CREATE_DIRECTORY);
   if(empty($local_url)) {
     // $cocon_media_directory = $to_temp ? 'temporary://' : 'public://';
     $local_url = $cocon_media_directory . '/' . drupal_basename($parsed_url['path']);
   }
-  return system_retrieve_file($url, $local_url, !$to_temp, FILE_EXISTS_REPLACE);
+  // dpm([$url, $local_url]);\
+  $retrieved_file = system_retrieve_file($url, $local_url, !$to_temp, FILE_EXISTS_REPLACE);
+  return $retrieved_file;
 }
 
 function remoteThumbToLocal($image_info, $prefix, $is_temp = false) {
@@ -285,19 +311,12 @@ function buildOptionsElements($set_id) {
       '#value' => $image_info['id'],
     ];
     $elm['thumb'] = [
-      '#type' => 'label',
-      '#title_display' => 'before',
-      '#title' => '&nbsp;',
-      '#attributes' => [
-        'class' => 'media-thumb',
-        'style' => "background-image:url(" . $thumb_url . ")",
-      ],
-      // '#markup' => "<div class='media-thumb' style='background-image:url($thumb_url)'></div>",
+      '#markup' => "<div class='media-thumb' style='background-image:url($thumb_url)'></div>",
     ];
     $elm['title'] = [
-      '#type' => 'label',
-      '#title_display' => 'before',
-      '#title' => $image_info['title'],
+      '#prefix' => '<label class="media-title">',
+      '#suffix' => '</label>',
+      '#markup' => $image_info['title'],
       '#attributes' => ['class' => 'media-title'],
     ];
     $elm['file_details'] = [
@@ -337,6 +356,78 @@ function buildTableSelect($class_id, $set_id) {
   return $table;
 }
 
-function ajaxCallbackGetFilesBySet(array &$form, FormStateInterface &$form_state) {
+function ajaxCallbackGetFilesBySet(&$form, &$form_state) {
   return $form['cocoon_media_browser']['images_table'];
+}
+
+/**
+ * Allow stream wrappers to have their chance at validation.
+ *
+ * Any module that implements hook_media_parse will have an
+ * opportunity to validate this.
+ *
+ * @see media_parse_to_uri()
+ */
+function cocoon_media_add_validate($form, &$form_state) {
+  $selected_images = $form_state['values']['cocoon_media_browser']['images_table'];
+  $filenames = '';
+  foreach($selected_images as $selected_image_id) {
+    if($selected_image_id) {
+      $cocoonController = cocoon_media_management_create_cmm_controller();
+      $file_info = $cocoonController->getThumbInfo($selected_image_id);
+      $url = $file_info['path'];
+      $embed_code = $url;
+      $form_state['values']['embed_code'] = $embed_code;
+
+      // See @file_entity_add_upload_submit
+      // Needed for skipping fields if is enabled and if Web tab is active.
+      $form_state['triggering_element']['#id'] = 'edit-next';
+
+      if (!empty($embed_code)) {
+        try {
+          $provider = media_internet_get_provider($embed_code);
+          $provider->validate();
+        }
+        catch (MediaInternetNoHandlerException $e) {
+          form_set_error('embed_code', $e->getMessage());
+          return;
+        }
+        catch (MediaInternetValidationException $e) {
+          form_set_error('embed_code', $e->getMessage());
+          return;
+        }
+
+        $validators = $form['#validators'];
+        $file = $provider->getFileObject();
+
+        if ($validators) {
+          try {
+            $file = $provider->getFileObject();
+          }
+          catch (Exception $e) {
+            form_set_error('embed_code', $e->getMessage());
+            return;
+          }
+
+          $errors = file_validate($file, $validators);
+
+          if (!empty($errors)) {
+            $message = t('%url could not be added.', array('%url' => $embed_code));
+            if (count($errors) > 1) {
+              $message .= theme('item_list', array('items' => $errors));
+            }
+            else {
+              $message .= ' ' . array_pop($errors);
+            }
+            form_set_error('embed_code', $message);
+            return FALSE;
+          }
+        }
+      }
+
+      else {
+        return FALSE;
+      }
+    }
+  }
 }
