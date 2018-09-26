@@ -85,40 +85,38 @@ function cocoon_media_management_forms($form_id, $args) {
 function cocoon_media_management_form_file_entity_add_upload_multiple_alter(&$form, &$form_state, $form_id) {
   $step = $form['#step'];
   if ($form_id == 'cocoon_media_management_external' && $step == 1) {
-    // unset($form['upload']);
-    $form['upload'] = array(
-      '#upload_location' => ''
-    );
     $domain = cocoon_media_management_get_setting('cocoon_domain');
     $username = cocoon_media_management_get_setting('cocoon_username');
     $api_key = cocoon_media_management_get_setting('cocoon_api_key');
-    $cocoonController = cocoon_media_management_create_cmm_controller();
-    $sets = $cocoonController->getSets();
-    $radio_sets = [];
-    $total_count = 0;
-    foreach($sets as $set) {
-      $radio_sets[$set['id']] = $set['title'] . ' (' . $set['file_count'] . ')';
-      $total_count += $set['file_count'];
-    }
-    $radio_sets['all'] = 'All'. ' (' . $total_count . ')';
+    // Add the follwing form elements only if the module API is configured.
+    if(!empty($domain) && !empty($username) && !empty($api_key)) {
+      $form['upload'] = array(
+        '#upload_location' => ''
+      );
+      $cocoonController = cocoon_media_management_create_cmm_controller();
+      $sets = $cocoonController->getSets();
+      $radio_sets = [];
+      $total_count = 0;
+      foreach($sets as $set) {
+        $radio_sets[$set['id']] = $set['title'] . ' (' . $set['file_count'] . ')';
+        $total_count += $set['file_count'];
+      }
+      $radio_sets['all'] = 'All'. ' (' . $total_count . ')';
 
-    $form['cocoon_media_browser'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Cocoon Media Management Browse'),
-      '#collapsible' => FALSE,
-      '#tree' => TRUE,
-    );
-    // CMM Label
-    $form['cocoon_media_browser']['othertable'] = array(
-      '#type' => 'tablegridselect',
-    );
-    // CMM Label
-    $form['cocoon_media_browser']['description'] = array(
-      '#markup' => t("Browse and add Cocoon Media to your library.") . '<br/>',
-    );
-
-  // Add the follwing form elements only if the module API is configured.
-  if(!empty($domain) && !empty($username) && !empty($api_key)) {
+      $form['cocoon_media_browser'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Cocoon Media Management Browse'),
+        '#collapsible' => FALSE,
+        '#tree' => TRUE,
+      );
+      // CMM Label
+      $form['cocoon_media_browser']['othertable'] = array(
+        '#type' => 'tablegridselect',
+      );
+      // CMM Label
+      $form['cocoon_media_browser']['description'] = array(
+        '#markup' => t("Browse and add Cocoon Media to your library.") . '<br/>',
+      );
       $form['cocoon_media_browser']['sets'] = array(
         '#type' => 'radios',
         '#title' => t('Select a set'),
@@ -141,7 +139,6 @@ function cocoon_media_management_form_file_entity_add_upload_multiple_alter(&$fo
     }
     else {
       // CMM Label
-      $url = Link::createFromRoute('here','cocoon_media_management.admin_settings');
       $form['cocoon_media_browser']['api_not_configured'] = array(
         '#markup' => t('Please first add the configuration parameters here: <a href="@url">settings</a> page', array(
           '@url' => url('admin/config/media/cocoon_settings'),

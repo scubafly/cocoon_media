@@ -133,9 +133,13 @@ class CocoonController {
 			$fileUploaded = '';
 		}
 
+		$thumb_ext = 'jpg';
+		if($extention == 'gif' || $extention == 'png' || $extention == 'jpg') {
+			$thumb_ext = $extention;
+		}
 		return array(
 			'path'     => $url . $thumbOrgPath . '/' . $filename . '.' . $extention,
-			'web'      => ! $noThumb ? $url . $thumbWebPath . '/' . $filename . '.' . $extention : '',
+			'web'      => ! $noThumb ? $url . $thumbWebPath . '/' . $filename . '.' . $thumb_ext : '',
 			'ext'      => $extention,
 			'name'     => $filename,
 			'dim'      => $fileDim,
