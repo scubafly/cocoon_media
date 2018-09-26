@@ -135,7 +135,7 @@ class CocoonController {
 
 		return array(
 			'path'     => $url . $thumbOrgPath . '/' . $filename . '.' . $extention,
-			'web'      => ! $noThumb ? $url . $thumbWebPath . '/' . $filename . '.jpg' : '',
+			'web'      => ! $noThumb ? $url . $thumbWebPath . '/' . $filename . '.' . $extention : '',
 			'ext'      => $extention,
 			'name'     => $filename,
 			'dim'      => $fileDim,

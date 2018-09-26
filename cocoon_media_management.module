@@ -72,7 +72,7 @@ function cocoon_media_management_forms($form_id, $args) {
   if ($form_id == 'cocoon_media_management_external') {
     drupal_add_css(drupal_get_path('module', 'cocoon_media_management') . '/css/tablegrid-selet.css');
     $forms[$form_id] = array(
-      'callback' => 'file_entity_add_upload',
+      'callback' => 'file_entity_add_upload_multiple',
     );
   }
 
@@ -82,10 +82,13 @@ function cocoon_media_management_forms($form_id, $args) {
 /**
  * Implements hook_form_FORM_ID_alter().
  */
-function cocoon_media_management_form_file_entity_add_upload_alter(&$form, &$form_state, $form_id) {
+function cocoon_media_management_form_file_entity_add_upload_multiple_alter(&$form, &$form_state, $form_id) {
   $step = $form['#step'];
   if ($form_id == 'cocoon_media_management_external' && $step == 1) {
-    unset($form['upload']);
+    // unset($form['upload']);
+    $form['upload'] = array(
+      '#upload_location' => ''
+    );
     $domain = cocoon_media_management_get_setting('cocoon_domain');
     $username = cocoon_media_management_get_setting('cocoon_username');
     $api_key = cocoon_media_management_get_setting('cocoon_api_key');
@@ -145,11 +148,6 @@ function cocoon_media_management_form_file_entity_add_upload_alter(&$form, &$for
         )),
       );
     }
-    // $form['actions']['submit'] = [
-    //   '#type' => 'submit',
-    //   '#value' => t('Download Media'),
-    //   '#button_type' => 'primary',
-    // ];
   
     // Create an array to hold potential Internet media providers.
     $providers = array();
@@ -170,7 +168,10 @@ function cocoon_media_management_form_file_entity_add_upload_alter(&$form, &$for
     // Add validation and submission handlers to the form and ensure that they
     // run first.
     array_unshift($form['#validate'], 'cocoon_media_add_validate');
-    array_unshift($form['#submit'], 'media_internet_add_submit');
+    // array_unshift($form['#submit'], 'cocoon_media_add_submit');
+    $form['#submit']= array(
+      'cocoon_media_add_submit'
+    );
   }
   return $form;
 }
@@ -185,7 +186,6 @@ function retrieveRemoteFile($url, $local_url = '', $to_temp = false) {
     // $cocon_media_directory = $to_temp ? 'temporary://' : 'public://';
     $local_url = $cocon_media_directory . '/' . drupal_basename($parsed_url['path']);
   }
-  // dpm([$url, $local_url]);\
   $retrieved_file = system_retrieve_file($url, $local_url, !$to_temp, FILE_EXISTS_REPLACE);
   return $retrieved_file;
 }
@@ -207,77 +207,6 @@ function remoteThumbToLocal($image_info, $prefix, $is_temp = false) {
     }
   }
   return $local_path;
-}
-
-/**
- * {@inheritdoc}
- */
-function submitForm(array &$form, FormStateInterface $form_state) {
-  $values = $form_state->getValues();
-  $selected_images = $values['cocoon_media_browser']['images_table'];
-  $filenames = '';
-  foreach($selected_images as $selected_image_id) {
-    if($selected_image_id) {
-      $cocoonController = cocoon_media_management_create_cmm_controller();
-      $file_info = $cocoonController->getThumbInfo($selected_image_id);
-      $url = $file_info['path'];
-      // Check the cache and download the file if needed.
-      $file = retrieveRemoteFile($url);
-      $media_bundle = 'file';
-      if ( $file_info['ext'] === 'jpg' ||
-          $file_info['ext'] === 'jpeg' ||
-          $file_info['ext'] === 'png' ||
-          $file_info['ext'] === 'gif' ||
-          $file_info['ext'] === 'tiff' ||
-          $file_info['ext'] === 'bmp'
-      ) {
-        $media_bundle = 'image';
-        $field_media_name = 'field_media_image';
-        $field_media_arr = [
-          'target_id' => $file->id(),
-          'alt' => $file_info['name'],
-          'title' => t($file_info['name']),
-        ];
-      }
-      else if($file_info['ext'] === 'mp4'||
-          $file_info['ext'] === 'avi'||
-          $file_info['ext'] === 'flv'||
-          $file_info['ext'] === 'mov') {
-        $media_bundle = 'video';
-        $field_media_name = 'field_media_video_file';
-        $field_media_arr = [
-          'target_id' => $file->id(),
-          'alt' => $file_info['name'],
-          'title' => t($file_info['name']),
-        ];
-      }
-      else {
-        $media_bundle = 'file';
-        $field_media_name = 'field_media_file';
-        $field_media_arr = [
-          'target_id' => $file->id(),
-          'title' => t($file_info['name']),
-        ];
-
-      }
-      // Create media entity with saved file.
-      $image_media = Media::create([
-        'bundle' => $media_bundle,
-        'uid' => \Drupal::currentUser()->id(),
-        'langcode' => \Drupal::languageManager()->getDefaultLanguage()->getId(),
-        'name' => $file_info['name'],
-        $field_media_name => $field_media_arr,
-      ]);
-      $image_media->save();
-      $filenames .= $file_info['name'] . ', ';
-    }
-  }
-  // Redirecting to the media library page.
-  $media_url = Url::fromRoute('entity.media.collection');
-  $form_state->setRedirectUrl($media_url);
-  $filenames = substr($filenames, 0, -2);
-  // Adding custom message.
-  drupal_set_message($this->t("The File(s) <i>$filenames</i> has been added to the media library."));
 }
 
 function buildOptionsElements($set_id) {
@@ -359,6 +288,64 @@ function buildTableSelect($class_id, $set_id) {
 function ajaxCallbackGetFilesBySet(&$form, &$form_state) {
   return $form['cocoon_media_browser']['images_table'];
 }
+
+/**
+ * Upload a file from a URL.
+ *
+ * This will copy a file from a remote location and store it locally.
+ *
+ * @see media_parse_to_uri()
+ * @see media_parse_to_file()
+ */
+function cocoon_media_add_submit($form, &$form_state) {
+  $selected_images = $form_state['values']['cocoon_media_browser']['images_table'];
+  $files = '';
+  foreach($selected_images as $selected_image_id) {
+    if($selected_image_id) {
+      $cocoonController = cocoon_media_management_create_cmm_controller();
+      $file_info = $cocoonController->getThumbInfo($selected_image_id);
+      $url = $file_info['path'];  
+      $files .= $file_info['name'] . '; ';
+
+      try {
+        // Save the remote file
+        $provider = media_internet_get_provider($url);
+        // Providers decide if they need to save locally or somewhere else.
+        // This method returns a file object
+        $file = $provider->save();
+      }
+      catch (Exception $e) {
+        form_set_error('embed_code', $e->getMessage());
+        return;
+      }
+
+      if (!$file->fid) {
+        form_set_error('embed_code', t('The file %file could not be saved. An unknown error has occurred.', array('%file' => $embed_code)));
+        return;
+      }
+      else {
+        $form_state['storage']['upload'] = $file->fid;
+      }
+      // Redirect to the file edit page.
+      if (file_entity_access('update', $file) && module_exists('media_bulk_upload')) {
+        $destination = array();
+        if (isset($_GET['destination'])) {
+          $destination = drupal_get_destination();
+          unset($_GET['destination']);
+        }
+        elseif (user_access('administer files')) {
+          $destination = array('destination' => 'admin/content/file');
+        }
+        $form_state['redirect'] = array('admin/content/file/edit-multiple/' . implode(' ', array_keys($form_state['files'])), array('query' => $destination));
+      }
+      else {
+        $form_state['redirect'] = user_access('administer files') ? 'admin/content/file' : '<front>';
+      }
+    }
+  }
+  drupal_set_message(t('The following file where added to the file library: ') . $files);
+}
+
 
 /**
  * Allow stream wrappers to have their chance at validation.
