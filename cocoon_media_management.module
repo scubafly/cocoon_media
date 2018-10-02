@@ -29,13 +29,13 @@ function cocoon_media_management_menu() {
    return $items;
  }
  
-function cocoon_media_management_get_setting($setting = '') {
+function cocoon_media_management_get_setting($setting = '', $default_to = '') {
   $cocoon_settings =variable_get('cocoon_media_settings', array());
   if(empty($setting)) {
     $return_value = $cocoon_settings;
   }
   else {
-    $return_value = !empty($cocoon_settings[$setting]) ? $cocoon_settings[$setting] : '';
+    $return_value = !empty($cocoon_settings[$setting]) ? $cocoon_settings[$setting] : $default_to;
   }
   return $return_value;
 }
@@ -136,6 +136,9 @@ function cocoon_media_management_form_file_entity_add_upload_multiple_alter(&$fo
       }
     
       $form['cocoon_media_browser']['images_table'] = buildTableSelect('images-table', $set);
+      $form['cocoon_media_browser']['pager'] = array(
+        '#theme' => 'pager',
+      );
     }
     else {
       // CMM Label
@@ -265,21 +268,31 @@ function buildTableSelect($class_id, $set_id) {
       'media_item' => t('Media File'),
   ];
   $options = buildOptionsElements($set_id);
+  $paging_size = cocoon_media_management_get_setting('paging_size', 20);
+  $current_page = pager_default_initialize(count($options), $paging_size);
+  $chunks = array_chunk($options, $paging_size, true);
   $table = array(
     '#type' => 'tableselect',
     '#header' => $header,
-    '#options' => $options,
+    '#options' => $chunks[$current_page],
     '#empty' => t('No media found'),
     '#multiple' => TRUE,
-    '#attributes' => ['id' => $class_id],
-    '#cache' => [
+    '#attributes' => array('id' => $class_id),
+    '#cache' => array(
       'max-age' => 60 * 60 * 24, // Cached for one day.
-    ],
+    ),
     '#attached' => array(
       'library' => array('cocoon_media_management/tablegrid-selet')
     ),
+    '#pre_render' => array(),
   );
+  
+  array_unshift($table['#pre_render'], 'cocoon_media_add_pager');
   return $table;
+}
+
+function cocoon_media_add_pager($element) {
+  return $element;
 }
 
 function ajaxCallbackGetFilesBySet(&$form, &$form_state) {

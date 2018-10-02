@@ -38,6 +38,13 @@ function cocoon_media_management_admin() {
     '#description' => t('Your Cocoon Username'),
     '#required' => TRUE,
   );
+  $form['cocoon_media_settings']['paging_size'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Cocoon Username'),
+    '#default_value' => cocoon_media_management_get_setting('paging_size', 20),
+    '#description' => t('Your Cocoon Username'),
+    '#required' => TRUE,
+  );
   if(!empty(cocoon_media_management_get_setting('cocoon_api_key'))
       && !empty(cocoon_media_management_get_setting('cocoon_domain'))
       && !empty(cocoon_media_management_get_setting('cocoon_username'))) {

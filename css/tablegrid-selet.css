@@ -2,8 +2,16 @@
  * @form-element tablegrid-selet.css
  */
 
+ #cocoon-media-management-external table.sticky-header {
+  z-index: 10;
+}
+
 #cocoon-media-management-external table thead th:first-child {
   display: none;
+}
+
+#cocoon-media-management-external table td:last-child {
+  border-right: 0;
 }
 
 #cocoon-media-management-external table tbody {
@@ -17,6 +25,7 @@
   border: none;
   width: 20%;
   padding: 0;
+  background-color: transparent;
 }
 
 @media (max-width: 1300px) {
@@ -74,9 +83,9 @@
   min-height: 20px;
 }
 
-#cocoon-media-management-external table tbody tr td input[type="checkbox"]:checked
+/* #cocoon-media-management-external table tbody tr td input[type="checkbox"]:checked
 , #cocoon-media-management-external table tbody tr td input[type="radio"]:checked {
-}
+} */
 
 #cocoon-media-management-external table tbody tr .media-thumb {
   width: 100%;
