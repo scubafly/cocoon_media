@@ -14,6 +14,12 @@ interface CocoonControllerInterface {
 
   public static function SoapClient($reqId, $sub_domain, $user_name, $secret_key);
 
+  public function getTags();
+  
+	public function getTag($tagId);
+
+	public function getFilesByTag($tagId);
+
   public function getThumbTypes();
 
   public function getSets();
@@ -26,7 +32,7 @@ interface CocoonControllerInterface {
 
   public function getRequestId();
 
-  private function errorResponse($errMsg);
+  function errorResponse($errMsg);
 
   public function getVersion();
 

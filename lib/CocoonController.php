@@ -39,6 +39,48 @@ class CocoonController {
 		return $oSoapClient;
 	}
 
+	public function getTags() {
+		try {
+			$output = self::SoapClient(
+				$this->getRequestId(),
+				$this->subdomain,
+				$this->username,
+				$this->secretkey)->getTags();
+		} catch ( SoapFault $oSoapFault ) {
+			$output = $oSoapFault;
+		}
+
+		return $output;
+	}
+
+	public function getTag($tagId) {
+		try {
+			$output = self::SoapClient(
+				$this->getRequestId(),
+				$this->subdomain,
+				$this->username,
+				$this->secretkey)->getTag($tagId);
+		} catch ( SoapFault $oSoapFault ) {
+			$output = $oSoapFault;
+		}
+
+		return $output;
+	}
+
+	public function getFilesByTag($tagId) {
+		try {
+			$output = self::SoapClient(
+				$this->getRequestId(),
+				$this->subdomain,
+				$this->username,
+				$this->secretkey)->getFilesByTag($tagId);
+		} catch ( SoapFault $oSoapFault ) {
+			$output = $oSoapFault;
+		}
+
+		return $output;
+	}
+
 	public function getThumbTypes() {
 		try {
 			$output = self::SoapClient(

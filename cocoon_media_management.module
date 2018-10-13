@@ -26,6 +26,13 @@ function cocoon_media_management_menu() {
     'file path' => drupal_get_path('module', 'file_entity'),
   );
 
+  $items['cocoon_media/search_tag'] = array(
+    'title' => 'Cocoon Media',
+    'page callback' => 'cocoon_media_autocomplete',
+    'access arguments' => array('access media browser'),
+    'type' => MENU_CALLBACK,
+  );
+
    return $items;
  }
  
@@ -41,11 +48,72 @@ function cocoon_media_management_get_setting($setting = '', $default_to = '') {
 }
 
 function cocoon_media_management_create_cmm_controller() {
-  $domain = cocoon_media_management_get_setting('cocoon_domain');
-  $username = cocoon_media_management_get_setting('cocoon_username');
-  $api_key = cocoon_media_management_get_setting('cocoon_api_key');
-  return new CocoonController($domain, $username, $api_key);
+  $cocoon_controller = &drupal_static(__FUNCTION__);
+  if (!isset($cocoon_controller)) {
+    if ($cache = cache_get('cocoon_controller')) {
+      $cocoon_controller = $cache->data;
+    }
+    else {
+      $domain = cocoon_media_management_get_setting('cocoon_domain');
+      $username = cocoon_media_management_get_setting('cocoon_username');
+      $api_key = cocoon_media_management_get_setting('cocoon_api_key');
+      $cocoon_controller = new CocoonController($domain, $username, $api_key);
+      cache_set('cocoon_controller', $cocoon_controller, 'cache');
+    }
+  }
+  return $cocoon_controller;
 }
+
+function cocoon_media_get_sets_cached() {
+  $cached_sets = &drupal_static(__FUNCTION__);
+  if (!isset($cached_sets)) {
+    if ($cache = cache_get('cocoon_sets')) {
+      $cached_sets = $cache->data;
+    }
+    else {
+      $cocoon_controller = cocoon_media_management_create_cmm_controller();
+      $cached_sets = $cocoon_controller->getSets();
+      cache_set('cocoon_sets', $cached_sets, 'cache', time() + 120);
+    }
+  }
+  return $cached_sets;
+}
+
+function cocoon_media_get_tags_cached() {
+  $cached_tags = &drupal_static(__FUNCTION__);
+  if (!isset($cached_tags)) {
+    if ($cache = cache_get('cocoon_tags')) {
+      $cached_tags = $cache->data;
+    }
+    else {
+      $cocoon_controller = cocoon_media_management_create_cmm_controller();
+      $cached_tags = $cocoon_controller->getTags();
+      cache_set('cocoon_tags', $cached_tags, 'cache', time() + 120);
+    }
+  }
+  return $cached_tags;
+}
+
+function cocoon_media_get_matching_tags($string = '', $only_name = true) {
+  $matches = array();  
+  if ($string) {
+    $tags_list = cocoon_media_get_tags_cached();
+    foreach ($tags_list as $tag) {
+      $string_found = strpos($tag['name'], $string);
+      if($string_found !== false){
+        if($only_name) {
+          $matches[$tag['name']] = check_plain($tag['name']);
+        }
+        else {
+          $matches[$tag['id']] = check_plain($tag['name']);
+        }
+      }
+    }
+  }
+
+  return $matches;
+}
+
 
 /**
  * Implements hook_theme().
@@ -93,8 +161,7 @@ function cocoon_media_management_form_file_entity_add_upload_multiple_alter(&$fo
       $form['upload'] = array(
         '#upload_location' => ''
       );
-      $cocoonController = cocoon_media_management_create_cmm_controller();
-      $sets = $cocoonController->getSets();
+      $sets = cocoon_media_get_sets_cached();
       $radio_sets = [];
       $total_count = 0;
       foreach($sets as $set) {
@@ -128,17 +195,33 @@ function cocoon_media_management_form_file_entity_add_upload_multiple_alter(&$fo
           'effect' => 'fade',
         ),
       );
+      $form['cocoon_media_browser']['tag_name'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Search by tag'),
+        '#default_value' => '',
+        '#autocomplete_path' => 'cocoon_media/search_tag',
+        '#ajax' => array(
+          'callback' => 'ajaxCallbackGetFilesBySet',
+          'wrapper' => 'images-table',
+          'effect' => 'fade',
+          'keypress' => true,
+        ),
+        '#size' => '20',
+        '#maxlength' => '60',
+      );
 
       $set = 'all';
+      $tag_id = null;
       if(!empty($form_state['values'])) {
         $values = $form_state['values'];
         $set = $values['cocoon_media_browser']['sets'];
+        $tag_id = $values['cocoon_media_browser']['tag_name'];
       }
     
-      $form['cocoon_media_browser']['images_table'] = buildTableSelect('images-table', $set);
       $form['cocoon_media_browser']['pager'] = array(
         '#theme' => 'pager',
       );
+      $form['cocoon_media_browser']['images_table'] = buildTableSelect('images-table', $set, $tag_id);
     }
     else {
       // CMM Label
@@ -209,65 +292,85 @@ function remoteThumbToLocal($image_info, $prefix, $is_temp = false) {
   return $local_path;
 }
 
-function buildOptionsElements($set_id) {
-  $image_list = [];
-  if(!empty($set_id)) {
-    $cocoonController = cocoon_media_management_create_cmm_controller();
-    if($set_id !== 'all')
-    {
-      $image_list = $cocoonController->getFilesBySet($set_id);
-    }
-    else {
-      foreach($cocoonController->getSets() as $set) {
-        $image_list = array_merge($image_list, $cocoonController->getFilesBySet($set['id']));
+function buildOptionsElements($set_id, $tag_name = null) {
+  // $options = &drupal_static(__FUNCTION__);
+  // if (!isset($options)) {
+  //   if ($cache = cache_get('cocoon_table_options')) {
+  //     $options = $cache->data;
+  //   }
+  //   else {
+      $image_list = [];
+      $options = [];
+      if(!empty($set_id)) {
+        $cocoonController = cocoon_media_management_create_cmm_controller();
+        if($tag_name !== null) {
+          $matching_tags = cocoon_media_get_matching_tags($tag_name, false);
+          // dpm($matching_tags);
+          foreach($matching_tags as $tag_id => $tag){
+            $image_list = array_merge($image_list, $cocoonController->getFilesByTag($tag_id));
+          }
+          dpm($image_list);
+        }
+        if($set_id !== 'all')
+        {
+          $image_list = $cocoonController->getFilesBySet($set_id);
+        }
+        else {
+          foreach(cocoon_media_get_sets_cached() as $set) {
+            $image_list = array_merge($image_list, $cocoonController->getFilesBySet($set['id']));
+          }
+        }
       }
-    }
-  }
-  $options = [];
-  foreach($image_list as $idx => $image_info) {
-    $thumb_url = '/' . drupal_get_path('module', 'cocoon_media_management')
-    . '/images/generic.png';
-    $thumb = remoteThumbToLocal($image_info, 'thumb_', true);
-    if(!empty($thumb)) {
-      $thumb_url = file_create_url($thumb);
-    }
-    $elm = [
-      '#type' => 'fieldset',
-      '#collapsible' => FALSE,
-    ];
-    $elm['id'] = [
-      '#type' => 'hidden',
-      '#value' => $image_info['id'],
-    ];
-    $elm['thumb'] = [
-      '#markup' => "<div class='media-thumb' style='background-image:url($thumb_url)'></div>",
-    ];
-    $elm['title'] = [
-      '#prefix' => '<label class="media-title">',
-      '#suffix' => '</label>',
-      '#markup' => $image_info['title'],
-      '#attributes' => ['class' => 'media-title'],
-    ];
-    $elm['file_details'] = [
-      '#markup' => '<p><b>Extension: </b>'
-                  . $image_info['extension']
-                  . '<br/><b>Size: </b>'
-                  . round($image_info['size']/1024, 2)
-                  . 'KB</p>',
-    ];
-
-    $options[$image_info['id']] = [
-      'media_item' => drupal_render($elm),
-    ];
-  }
+      foreach($image_list as $idx => $image_info) {
+        $thumb_url = '/' . drupal_get_path('module', 'cocoon_media_management')
+        . '/images/generic.png';
+        $thumb = remoteThumbToLocal($image_info, 'thumb_', true);
+        if(!empty($thumb)) {
+          $thumb_url = file_create_url($thumb);
+        }
+        $elm = [
+          '#type' => 'fieldset',
+          '#collapsible' => FALSE,
+        ];
+        $elm['id'] = [
+          '#type' => 'hidden',
+          '#value' => $image_info['id'],
+        ];
+        $elm['thumb'] = [
+          '#markup' => "<div class='media-thumb' style='background-image:url($thumb_url)'></div>",
+        ];
+        $elm['title'] = [
+          '#prefix' => '<label class="media-title">',
+          '#suffix' => '</label>',
+          '#markup' => $image_info['title'],
+          '#attributes' => ['class' => 'media-title'],
+        ];
+        $elm['file_details'] = [
+          '#markup' => '<p><b>Extension: </b>'
+                      . $image_info['extension']
+                      . '<br/><b>Size: </b>'
+                      . round($image_info['size']/1024, 2)
+                      . 'KB</p>',
+        ];
+    
+        $options[$image_info['id']] = [
+          'media_item' => drupal_render($elm),
+        ];
+      }
+  //     // Setting an expiry time on this cache, as options may change.
+  //     cache_set('cocoon_table_options', $options, 'cache', time() + 120);
+  //   }
+  // }
+  
   return $options;
 }
 
-function buildTableSelect($class_id, $set_id) {
+function buildTableSelect($class_id, $set_id, $tag_name = null) {
   $header = [
       'media_item' => t('Media File'),
   ];
-  $options = buildOptionsElements($set_id);
+  
+  $options = buildOptionsElements($set_id, $tag_name);
   $paging_size = cocoon_media_management_get_setting('paging_size', 20);
   $current_page = pager_default_initialize(count($options), $paging_size);
   $chunks = array_chunk($options, $paging_size, true);
@@ -427,4 +530,12 @@ function cocoon_media_add_validate($form, &$form_state) {
       }
     }
   }
+}
+
+
+/**
+ * Autocomplete callback for the tag search field
+ */
+function cocoon_media_autocomplete($string = '') {
+  drupal_json_output(cocoon_media_get_matching_tags($string));
 }
