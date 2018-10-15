@@ -151,44 +151,47 @@ class CocoonController {
 		$thumbWebPath = '/embed/process-file/type/400px/file';//$aThumbTypes[ $thumbWeb ]['path'];
 
 		$aFile     = $this->getFile( $fileId );
-		$filename  = $aFile['filename'];
-		$extention = strtolower( $aFile['extension'] );
+		if(gettype($aFile) == 'array') {
+			$filename  = $aFile['filename'];
+			$extention = strtolower( $aFile['extension'] );
 
-		if ( $extention === 'jpg' ||
-		     $extention === 'jpeg' ||
-		     $extention === 'png' ||
-		     $extention === 'gif' ||
-		     $extention === 'tiff' ||
-		     $extention === 'tif' ||
-		     $extention === 'bmp'
-		) {
-			$noThumb = false;
+			if ( $extention === 'jpg' ||
+				$extention === 'jpeg' ||
+				$extention === 'png' ||
+				$extention === 'gif' ||
+				$extention === 'tiff' ||
+				$extention === 'tif' ||
+				$extention === 'bmp'
+			) {
+				$noThumb = false;
+			}
+
+			$fileDim  = $aFile['width'] && $aFile['height'] ? $aFile['width'] . ' x ' . $aFile['height'] : '';
+			$fileSize = $aFile['size'] ? round( $aFile['size'] / 1024 ) . ' KB' : '';
+
+			if ( $aFile['upload_date'] ) {
+				$date         = date_create( $aFile['upload_date'] );
+				$fileUploaded = $date;
+			} else {
+				$fileUploaded = '';
+			}
+
+			$thumb_ext = 'jpg';
+			if($extention == 'gif' || $extention == 'png' || $extention == 'jpg') {
+				$thumb_ext = $extention;
+			}
+			return array(
+				'path'     => $url . $thumbOrgPath . '/' . $filename . '.' . $extention,
+				'web'      => ! $noThumb ? $url . $thumbWebPath . '/' . $filename . '.' . $thumb_ext : '',
+				'ext'      => $extention,
+				'name'     => $filename,
+				'dim'      => $fileDim,
+				'size'     => $fileSize,
+				'uploaded' => $fileUploaded,
+				'domain'   => $url
+			);
 		}
-
-		$fileDim  = $aFile['width'] && $aFile['height'] ? $aFile['width'] . ' x ' . $aFile['height'] : '';
-		$fileSize = $aFile['size'] ? round( $aFile['size'] / 1024 ) . ' KB' : '';
-
-		if ( $aFile['upload_date'] ) {
-			$date         = date_create( $aFile['upload_date'] );
-			$fileUploaded = $date;
-		} else {
-			$fileUploaded = '';
-		}
-
-		$thumb_ext = 'jpg';
-		if($extention == 'gif' || $extention == 'png' || $extention == 'jpg') {
-			$thumb_ext = $extention;
-		}
-		return array(
-			'path'     => $url . $thumbOrgPath . '/' . $filename . '.' . $extention,
-			'web'      => ! $noThumb ? $url . $thumbWebPath . '/' . $filename . '.' . $thumb_ext : '',
-			'ext'      => $extention,
-			'name'     => $filename,
-			'dim'      => $fileDim,
-			'size'     => $fileSize,
-			'uploaded' => $fileUploaded,
-			'domain'   => $url
-		);
+		return get_object_vars($aFile);
 	}
 
 	public function getRequestId() {

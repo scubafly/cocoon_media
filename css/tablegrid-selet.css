@@ -2,25 +2,25 @@
  * @form-element tablegrid-selet.css
  */
 
- #cocoon-media-management-external table.sticky-header {
+ [id^="cocoon-media-management-external"] table.sticky-header {
   z-index: 10;
 }
 
-#cocoon-media-management-external table thead th:first-child {
+[id^="cocoon-media-management-external"] table thead th:first-child {
   display: none;
 }
 
-#cocoon-media-management-external table td:last-child {
+[id^="cocoon-media-management-external"] table td:last-child {
   border-right: 0;
 }
 
-#cocoon-media-management-external table tbody {
+[id^="cocoon-media-management-external"] table tbody {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-start;
 }
 
-#cocoon-media-management-external table tbody tr {
+[id^="cocoon-media-management-external"] table tbody tr {
   display: flex;
   border: none;
   width: 20%;
@@ -29,34 +29,34 @@
 }
 
 @media (max-width: 1300px) {
-  #cocoon-media-management-external table tbody tr {
+  [id^="cocoon-media-management-external"] table tbody tr {
     width: 25%;
   }
 }
 
 @media (max-width: 1024px) {
-  #cocoon-media-management-external table tbody tr {
+  [id^="cocoon-media-management-external"] table tbody tr {
     width: 33.3%;
   }
 }
 
 @media (max-width: 940px) {
-  #cocoon-media-management-external table tbody tr {
+  [id^="cocoon-media-management-external"] table tbody tr {
     width: 50%;
   }
 }
 
 @media (max-width: 600px) {
-  #cocoon-media-management-external table tbody tr {
+  [id^="cocoon-media-management-external"] table tbody tr {
     width: 100%;
   }
 }
 
-#cocoon-media-management-external table tbody tr td {
+[id^="cocoon-media-management-external"] table tbody tr td {
   width: 100%;
 }
 
-#cocoon-media-management-external table tbody tr td:first-child {
+[id^="cocoon-media-management-external"] table tbody tr td:first-child {
   position: absolute;
   padding: 0;
   margin: 22px 12px;
@@ -69,7 +69,7 @@
   box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.3);
 }
 
-#cocoon-media-management-external table tbody tr td:first-child div {
+[id^="cocoon-media-management-external"] table tbody tr td:first-child div {
   width: 100%;
   height: 100%;
   display: flex;
@@ -77,17 +77,17 @@
   justify-content: center;
 }
 
-#cocoon-media-management-external table tbody tr td input[type="checkbox"]
-, #cocoon-media-management-external table tbody tr td input[type="radio"] {
+[id^="cocoon-media-management-external"] table tbody tr td input[type="checkbox"]
+, [id^="cocoon-media-management-external"] table tbody tr td input[type="radio"] {
   min-width: 20px;
   min-height: 20px;
 }
 
-/* #cocoon-media-management-external table tbody tr td input[type="checkbox"]:checked
-, #cocoon-media-management-external table tbody tr td input[type="radio"]:checked {
+/* [id^="cocoon-media-management-external"] table tbody tr td input[type="checkbox"]:checked
+, [id^="cocoon-media-management-external"] table tbody tr td input[type="radio"]:checked {
 } */
 
-#cocoon-media-management-external table tbody tr .media-thumb {
+[id^="cocoon-media-management-external"] table tbody tr .media-thumb {
   width: 100%;
   height: 150px;
   background-size: contain;
@@ -95,11 +95,11 @@
   background-position: center center;
 }
 
-#cocoon-media-management-external table tbody tr .media-title {
+[id^="cocoon-media-management-external"] table tbody tr .media-title {
   height: 4em;
   word-break: break-all;
 }
 
-#cocoon-media-management-external table tbody tr fieldset {
+[id^="cocoon-media-management-external"] table tbody tr fieldset {
   padding: 15px;
 }

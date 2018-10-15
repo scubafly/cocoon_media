@@ -94,8 +94,42 @@ function cocoon_media_get_tags_cached() {
   return $cached_tags;
 }
 
+function cocoon_media_get_files_by_tag_cached($tag_name) {
+  $tags_images_list = [];
+  if($tag_name) {
+    $matching_tags = cocoon_media_get_matching_tags($tag_name, false);
+  }
+  else {
+    $matching_tags = cocoon_media_get_tags_cached();
+  }
+  $all_tags_files = &drupal_static(__FUNCTION__);
+  if (!isset($all_tags_files)) {
+    if ($cache = cache_get('cocoon_tags_files')) {
+      $all_tags_files = $cache->data;
+    }
+    else {
+      $cocoon_controller = cocoon_media_management_create_cmm_controller();
+      foreach(cocoon_media_get_tags_cached() as $tag){
+        $tag_files = $cocoon_controller->getFilesByTag($tag['id']);
+        $all_tags_files[$tag['id']] = gettype($tag_files) == 'array' ? $tag_files : [];
+      }
+      cache_set('cocoon_tags_files', $all_tags_files, 'cache', time() + 120);
+    }
+  }
+  foreach($matching_tags as $tag_id => $tag){
+    if($tag_id) {
+      if($all_tags_files[$tag_id]) {
+        foreach($all_tags_files[$tag_id] as $matching_tag_file) {
+          $tags_images_list[$matching_tag_file['id']] = $matching_tag_file;
+        }
+      }
+    }
+  }
+  return $tags_images_list;
+}
+
 function cocoon_media_get_matching_tags($string = '', $only_name = true) {
-  $matches = array();  
+  $matches = array();
   if ($string) {
     $tags_list = cocoon_media_get_tags_cached();
     foreach ($tags_list as $tag) {
@@ -137,8 +171,7 @@ function cocoon_media_management_forms($form_id, $args) {
   $forms = array();
 
   // Create a copy of the upload wizard form for internet media.
-  if ($form_id == 'cocoon_media_management_external') {
-    drupal_add_css(drupal_get_path('module', 'cocoon_media_management') . '/css/tablegrid-selet.css');
+  if (strpos($form_id, 'cocoon_media_management_external') !== false) {
     $forms[$form_id] = array(
       'callback' => 'file_entity_add_upload_multiple',
     );
@@ -152,6 +185,7 @@ function cocoon_media_management_forms($form_id, $args) {
  */
 function cocoon_media_management_form_file_entity_add_upload_multiple_alter(&$form, &$form_state, $form_id) {
   $step = $form['#step'];
+  $form['#attached']['css'][] = drupal_get_path('module', 'cocoon_media_management') . '/css/tablegrid-selet.css';
   if ($form_id == 'cocoon_media_management_external' && $step == 1) {
     $domain = cocoon_media_management_get_setting('cocoon_domain');
     $username = cocoon_media_management_get_setting('cocoon_username');
@@ -191,23 +225,9 @@ function cocoon_media_management_form_file_entity_add_upload_multiple_alter(&$fo
         '#options' => $radio_sets,
         '#ajax' => array(
           'callback' => 'ajaxCallbackGetFilesBySet',
-          'wrapper' => 'images-table',
+          'wrapper' => 'cocoon-results',
           'effect' => 'fade',
         ),
-      );
-      $form['cocoon_media_browser']['tag_name'] = array(
-        '#type' => 'textfield',
-        '#title' => t('Search by tag'),
-        '#default_value' => '',
-        '#autocomplete_path' => 'cocoon_media/search_tag',
-        '#ajax' => array(
-          'callback' => 'ajaxCallbackGetFilesBySet',
-          'wrapper' => 'images-table',
-          'effect' => 'fade',
-          'keypress' => true,
-        ),
-        '#size' => '20',
-        '#maxlength' => '60',
       );
 
       $set = 'all';
@@ -217,11 +237,31 @@ function cocoon_media_management_form_file_entity_add_upload_multiple_alter(&$fo
         $set = $values['cocoon_media_browser']['sets'];
         $tag_id = $values['cocoon_media_browser']['tag_name'];
       }
+
+      $form['cocoon_media_browser']['tag_name'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Search by tag'),
+        '#default_value' => $tag_id ? $tag_id : '',
+        '#autocomplete_path' => 'cocoon_media/search_tag',
+        '#ajax' => array(
+          'callback' => 'ajaxCallbackGetFilesBySet',
+          'wrapper' => 'cocoon-results',
+          'effect' => 'fade',
+          'keypress' => true,
+        ),
+        '#size' => '20',
+        '#maxlength' => '60',
+      );
+
+      $form['cocoon_media_browser']['results'] = array(
+        '#prefix' => '<div id="cocoon-results">',
+        '#suffix' => '</div>',
+      );
     
-      $form['cocoon_media_browser']['pager'] = array(
+      $form['cocoon_media_browser']['results']['pager'] = array(
         '#theme' => 'pager',
       );
-      $form['cocoon_media_browser']['images_table'] = buildTableSelect('images-table', $set, $tag_id);
+      $form['cocoon_media_browser']['results']['images_table'] = buildTableSelect('images-table', $set, $tag_id);
     }
     else {
       // CMM Label
@@ -285,6 +325,7 @@ function remoteThumbToLocal($image_info, $prefix, $is_temp = false) {
         $local_file = retrieveRemoteFile($thumb_info['web'], $local_path, $is_temp);
       }
       else {
+        dpm($thumb_info);
         $local_path = '';
       }
     }
@@ -292,75 +333,93 @@ function remoteThumbToLocal($image_info, $prefix, $is_temp = false) {
   return $local_path;
 }
 
+
+/**
+ * Builds the options for the tableselect used in the cocoon (add) media page
+ */
 function buildOptionsElements($set_id, $tag_name = null) {
-  // $options = &drupal_static(__FUNCTION__);
-  // if (!isset($options)) {
-  //   if ($cache = cache_get('cocoon_table_options')) {
-  //     $options = $cache->data;
-  //   }
-  //   else {
+      $sets_image_list = [];
+      $tags_images_list = [];
       $image_list = [];
       $options = [];
       if(!empty($set_id)) {
         $cocoonController = cocoon_media_management_create_cmm_controller();
-        if($tag_name !== null) {
-          $matching_tags = cocoon_media_get_matching_tags($tag_name, false);
-          // dpm($matching_tags);
-          foreach($matching_tags as $tag_id => $tag){
-            $image_list = array_merge($image_list, $cocoonController->getFilesByTag($tag_id));
-          }
-          dpm($image_list);
-        }
+        // First the image list is created based on seleted sets, 'all' includes all sets.
         if($set_id !== 'all')
         {
-          $image_list = $cocoonController->getFilesBySet($set_id);
+          $sets_image_list = $cocoonController->getFilesBySet($set_id);
         }
         else {
           foreach(cocoon_media_get_sets_cached() as $set) {
-            $image_list = array_merge($image_list, $cocoonController->getFilesBySet($set['id']));
+            $sets_image_list = array_merge($sets_image_list, $cocoonController->getFilesBySet($set['id']));
           }
         }
-      }
-      foreach($image_list as $idx => $image_info) {
-        $thumb_url = '/' . drupal_get_path('module', 'cocoon_media_management')
-        . '/images/generic.png';
-        $thumb = remoteThumbToLocal($image_info, 'thumb_', true);
-        if(!empty($thumb)) {
-          $thumb_url = file_create_url($thumb);
+        $image_list = $sets_image_list;
+        
+        // Then we check if a tag is also there and we filter based on that.
+        if($tag_name) {
+          $tags_images_list = cocoon_media_get_files_by_tag_cached($tag_name);
+          $image_list = $tags_images_list;
         }
-        $elm = [
-          '#type' => 'fieldset',
-          '#collapsible' => FALSE,
-        ];
-        $elm['id'] = [
-          '#type' => 'hidden',
-          '#value' => $image_info['id'],
-        ];
-        $elm['thumb'] = [
-          '#markup' => "<div class='media-thumb' style='background-image:url($thumb_url)'></div>",
-        ];
-        $elm['title'] = [
-          '#prefix' => '<label class="media-title">',
-          '#suffix' => '</label>',
-          '#markup' => $image_info['title'],
-          '#attributes' => ['class' => 'media-title'],
-        ];
-        $elm['file_details'] = [
-          '#markup' => '<p><b>Extension: </b>'
-                      . $image_info['extension']
-                      . '<br/><b>Size: </b>'
-                      . round($image_info['size']/1024, 2)
-                      . 'KB</p>',
-        ];
-    
-        $options[$image_info['id']] = [
-          'media_item' => drupal_render($elm),
-        ];
+        // $image_list = array_merge($sets_image_list, $tags_images_list);
+          dpm($image_list);
       }
-  //     // Setting an expiry time on this cache, as options may change.
-  //     cache_set('cocoon_table_options', $options, 'cache', time() + 120);
-  //   }
-  // }
+      // Generating the full (cached) list of rendered items (all images)
+      $all_options = &drupal_static(__FUNCTION__);
+      if (!isset($all_options)) {
+        if ($cache = cache_get('cocoon_table_options')) {
+          $all_options = $cache->data;
+        }
+        else {
+          $all_image_list = array();
+          foreach(cocoon_media_get_sets_cached() as $set) {
+            $all_image_list = array_merge($all_image_list, $cocoonController->getFilesBySet($set['id']));
+          }
+          $all_image_list = array_merge($all_image_list, cocoon_media_get_files_by_tag_cached(''));
+          foreach($all_image_list as $idx => $image_info) {
+            $thumb_url = '/' . drupal_get_path('module', 'cocoon_media_management')
+            . '/images/generic.png';
+            $thumb = remoteThumbToLocal($image_info, 'thumb_', true);
+            if(!empty($thumb)) {
+              $thumb_url = file_create_url($thumb);
+            }
+            $elm = [
+              '#type' => 'fieldset',
+              '#collapsible' => FALSE,
+            ];
+            $elm['id'] = [
+              '#type' => 'hidden',
+              '#value' => $image_info['id'],
+            ];
+            $elm['thumb'] = [
+              '#markup' => "<div class='media-thumb' style='background-image:url($thumb_url)'></div>",
+            ];
+            $elm['title'] = [
+              '#prefix' => '<label class="media-title">',
+              '#suffix' => '</label>',
+              '#markup' => $image_info['title'],
+              '#attributes' => ['class' => 'media-title'],
+            ];
+            $elm['file_details'] = [
+              '#markup' => '<p><b>Extension: </b>'
+                          . $image_info['extension']
+                          . '<br/><b>Size: </b>'
+                          . round($image_info['size']/1024, 2)
+                          . 'KB</p>',
+            ];
+        
+            $all_options[$image_info['id']] = array(
+              'media_item' => drupal_render($elm),
+            );
+          }
+          // Setting an expiry time on this cache, as options may change.
+          cache_set('cocoon_table_options', $all_options, 'cache', time() + 120);
+        }
+      }
+      // Cycle through all selected images, and get the rendered item from the cached array
+      foreach($image_list as $idx => $image_info) {
+        $options[$image_info['id']] = $all_options[$image_info['id']];
+      }
   
   return $options;
 }
@@ -399,7 +458,8 @@ function cocoon_media_add_pager($element) {
 }
 
 function ajaxCallbackGetFilesBySet(&$form, &$form_state) {
-  return $form['cocoon_media_browser']['images_table'];
+  dpm($form_state['values']);
+  return $form['cocoon_media_browser']['results'];
 }
 
 /**
@@ -411,7 +471,7 @@ function ajaxCallbackGetFilesBySet(&$form, &$form_state) {
  * @see media_parse_to_file()
  */
 function cocoon_media_add_submit($form, &$form_state) {
-  $selected_images = $form_state['values']['cocoon_media_browser']['images_table'];
+  $selected_images = $form_state['values']['cocoon_media_browser']['results']['images_table'];
   $files = '';
   foreach($selected_images as $selected_image_id) {
     if($selected_image_id) {
@@ -469,13 +529,23 @@ function cocoon_media_add_submit($form, &$form_state) {
  * @see media_parse_to_uri()
  */
 function cocoon_media_add_validate($form, &$form_state) {
-  $selected_images = $form_state['values']['cocoon_media_browser']['images_table'];
+  $selected_images = $form_state['values']['cocoon_media_browser']['results']['images_table'];
   $filenames = '';
   foreach($selected_images as $selected_image_id) {
     if($selected_image_id) {
       $cocoonController = cocoon_media_management_create_cmm_controller();
       $file_info = $cocoonController->getThumbInfo($selected_image_id);
-      $url = $file_info['path'];
+      if(!isset($file_info['path']))
+      {
+        dpm($selected_image_id);
+        dpm($file_info);
+        $url = '';
+        $error_message = 'The file cannot be downloaded' . (isset($file_info['faultcode']) ? ': ' . $file_info['faultcode'] . ' ' : '') . (isset($file_info['faultstring']) ? $file_info['faultstring'] : '.');
+        form_set_error('embed_code', $error_message);
+      }
+      else {
+        $url = $file_info['path'];
+      }
       $embed_code = $url;
       $form_state['values']['embed_code'] = $embed_code;
 
