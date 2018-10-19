@@ -232,11 +232,24 @@ function cocoon_media_management_form_file_entity_add_upload_multiple_alter(&$fo
 
       $set = 'all';
       $tag_id = null;
+      $current_page = 0;
       if(!empty($form_state['values'])) {
         $values = $form_state['values'];
         $set = $values['cocoon_media_browser']['sets'];
         $tag_id = $values['cocoon_media_browser']['tag_name'];
+        $current_page = $values['cocoon_media_browser']['results']['page'];
+        if($values['op'] == '>') {
+          $current_page += 1;
+        }
+        else if($values['op'] == '<') {
+          $current_page -= 1;
+        }
       }
+      $options = buildOptionsElements($set, $tag_id);
+      $paging_size = cocoon_media_management_get_setting('paging_size', 20);
+      $chunks = array_chunk($options, $paging_size, true);
+      $current_page = $current_page < 0 ? 0 : $current_page;
+      $current_page = $current_page >= count($chunks) ? count($chunks)-1 : $current_page;
 
       $form['cocoon_media_browser']['tag_name'] = array(
         '#type' => 'textfield',
@@ -257,11 +270,45 @@ function cocoon_media_management_form_file_entity_add_upload_multiple_alter(&$fo
         '#prefix' => '<div id="cocoon-results">',
         '#suffix' => '</div>',
       );
-    
-      $form['cocoon_media_browser']['results']['pager'] = array(
-        '#theme' => 'pager',
+      $form['cocoon_media_browser']['results']['actions'] = array(
+        '#type' => 'actions',
+        '#weight' => 0,
       );
-      $form['cocoon_media_browser']['results']['images_table'] = buildTableSelect('images-table', $set, $tag_id);
+      $form['cocoon_media_browser']['results']['actions']['prev'] = array(
+        '#type' => 'button',
+        '#value' => '<',
+        '#ajax' => array(
+          'callback' => 'ajaxCallbackGetFilesBySet',
+          'wrapper' => 'cocoon-results',
+          'effect' => 'fade',
+          'progress' => array(
+            'message' => '',
+          ), 
+        ),
+      );
+      $form['cocoon_media_browser']['results']['page'] = array(
+        '#type' => 'hidden',
+        '#value' => $current_page,
+      );
+      $form['cocoon_media_browser']['results']['actions']['pagenum'] = array(
+        '#type' => 'button',
+        '#value' => $current_page + 1 . ' of ' . count($chunks),
+        '#disabled' => true,
+      );
+      $form['cocoon_media_browser']['results']['actions']['next'] = array(
+        '#type' => 'button',
+        '#value' => '>',
+        '#ajax' => array(
+          'callback' => 'ajaxCallbackGetFilesBySet',
+          'wrapper' => 'cocoon-results',
+          'effect' => 'fade',
+          'progress' => array(
+            'message' => '',
+          ), 
+        ),
+      );
+
+      $form['cocoon_media_browser']['results']['images_table'] = buildTableSelect('images-table', $chunks[$current_page]);
     }
     else {
       // CMM Label
@@ -325,7 +372,6 @@ function remoteThumbToLocal($image_info, $prefix, $is_temp = false) {
         $local_file = retrieveRemoteFile($thumb_info['web'], $local_path, $is_temp);
       }
       else {
-        dpm($thumb_info);
         $local_path = '';
       }
     }
@@ -362,7 +408,6 @@ function buildOptionsElements($set_id, $tag_name = null) {
           $image_list = $tags_images_list;
         }
         // $image_list = array_merge($sets_image_list, $tags_images_list);
-          dpm($image_list);
       }
       // Generating the full (cached) list of rendered items (all images)
       $all_options = &drupal_static(__FUNCTION__);
@@ -424,19 +469,15 @@ function buildOptionsElements($set_id, $tag_name = null) {
   return $options;
 }
 
-function buildTableSelect($class_id, $set_id, $tag_name = null) {
+function buildTableSelect($class_id, $options) {
   $header = [
       'media_item' => t('Media File'),
   ];
   
-  $options = buildOptionsElements($set_id, $tag_name);
-  $paging_size = cocoon_media_management_get_setting('paging_size', 20);
-  $current_page = pager_default_initialize(count($options), $paging_size);
-  $chunks = array_chunk($options, $paging_size, true);
   $table = array(
     '#type' => 'tableselect',
     '#header' => $header,
-    '#options' => $chunks[$current_page],
+    '#options' => $options,
     '#empty' => t('No media found'),
     '#multiple' => TRUE,
     '#attributes' => array('id' => $class_id),
@@ -458,7 +499,6 @@ function cocoon_media_add_pager($element) {
 }
 
 function ajaxCallbackGetFilesBySet(&$form, &$form_state) {
-  dpm($form_state['values']);
   return $form['cocoon_media_browser']['results'];
 }
 
@@ -537,8 +577,6 @@ function cocoon_media_add_validate($form, &$form_state) {
       $file_info = $cocoonController->getThumbInfo($selected_image_id);
       if(!isset($file_info['path']))
       {
-        dpm($selected_image_id);
-        dpm($file_info);
         $url = '';
         $error_message = 'The file cannot be downloaded' . (isset($file_info['faultcode']) ? ': ' . $file_info['faultcode'] . ' ' : '') . (isset($file_info['faultstring']) ? $file_info['faultstring'] : '.');
         form_set_error('embed_code', $error_message);
