@@ -48,15 +48,6 @@ class CMMAddMediaForm extends ConfigFormBase {
     }
     $radio_sets['all'] = 'All'. ' (' . $total_count . ')';
 
-    // $form['custom'] = array(
-    //   '#theme' => 'select_items_grid',
-    //   '#source_text' => array(
-    //     'some',
-    //     ' text',
-    //     ' and. dot me?',
-    //     ' Why!',
-    //   ),
-    // );
     $form['cocoon_media_browser'] = array(
       '#type' => 'fieldset',
       '#title' => t('Cocoon Media Management Browse'),

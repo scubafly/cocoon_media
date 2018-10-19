@@ -1,14 +1,12 @@
 <?php
 
-namespace Drupal\cocoon_media_management;
-
 /**
  * @Plugin(
  *
  * )
  */
 class CocoonController {
-	public static $domainName = 'use-cocoon.com';
+	public static $domainName = 'use-cocoon.nl';
 
 	public $thumbsPerPage = 24;
 	public $subdomain = '';
@@ -39,6 +37,48 @@ class CocoonController {
 		$oSoapClient->__setSoapHeaders( $SoapHeader );
 
 		return $oSoapClient;
+	}
+
+	public function getTags() {
+		try {
+			$output = self::SoapClient(
+				$this->getRequestId(),
+				$this->subdomain,
+				$this->username,
+				$this->secretkey)->getTags();
+		} catch ( SoapFault $oSoapFault ) {
+			$output = $oSoapFault;
+		}
+
+		return $output;
+	}
+
+	public function getTag($tagId) {
+		try {
+			$output = self::SoapClient(
+				$this->getRequestId(),
+				$this->subdomain,
+				$this->username,
+				$this->secretkey)->getTag($tagId);
+		} catch ( SoapFault $oSoapFault ) {
+			$output = $oSoapFault;
+		}
+
+		return $output;
+	}
+
+	public function getFilesByTag($tagId) {
+		try {
+			$output = self::SoapClient(
+				$this->getRequestId(),
+				$this->subdomain,
+				$this->username,
+				$this->secretkey)->getFilesByTag($tagId);
+		} catch ( SoapFault $oSoapFault ) {
+			$output = $oSoapFault;
+		}
+
+		return $output;
 	}
 
 	public function getThumbTypes() {
@@ -111,40 +151,47 @@ class CocoonController {
 		$thumbWebPath = $aThumbTypes[ $thumbWeb ]['path'];
 
 		$aFile     = $this->getFile( $fileId );
-		$filename  = $aFile['filename'];
-		$extention = strtolower( $aFile['extension'] );
+		if(gettype($aFile) == 'array') {
+			$filename  = $aFile['filename'];
+			$extention = strtolower( $aFile['extension'] );
 
-		if ( $extention === 'jpg' ||
-		     $extention === 'jpeg' ||
-		     $extention === 'png' ||
-		     $extention === 'gif' ||
-		     $extention === 'tiff' ||
-		     $extention === 'tif' ||
-		     $extention === 'bmp'
-		) {
-			$noThumb = false;
+			if ( $extention === 'jpg' ||
+				$extention === 'jpeg' ||
+				$extention === 'png' ||
+				$extention === 'gif' ||
+				$extention === 'tiff' ||
+				$extention === 'tif' ||
+				$extention === 'bmp'
+			) {
+				$noThumb = false;
+			}
+
+			$fileDim  = $aFile['width'] && $aFile['height'] ? $aFile['width'] . ' x ' . $aFile['height'] : '';
+			$fileSize = $aFile['size'] ? round( $aFile['size'] / 1024 ) . ' KB' : '';
+
+			if ( $aFile['upload_date'] ) {
+				$date         = date_create( $aFile['upload_date'] );
+				$fileUploaded = $date;
+			} else {
+				$fileUploaded = '';
+			}
+
+			$thumb_ext = 'jpg';
+			if($extention == 'gif' || $extention == 'png' || $extention == 'jpg') {
+				$thumb_ext = $extention;
+			}
+			return array(
+				'path'     => $url . $thumbOrgPath . '/' . $filename . '.' . $extention,
+				'web'      => ! $noThumb ? $url . $thumbWebPath . '/' . $filename . '.' . $thumb_ext : '',
+				'ext'      => $extention,
+				'name'     => $filename,
+				'dim'      => $fileDim,
+				'size'     => $fileSize,
+				'uploaded' => $fileUploaded,
+				'domain'   => $url
+			);
 		}
-
-		$fileDim  = $aFile['width'] && $aFile['height'] ? $aFile['width'] . ' x ' . $aFile['height'] : '';
-		$fileSize = $aFile['size'] ? round( $aFile['size'] / 1024 ) . ' KB' : '';
-
-		if ( $aFile['upload_date'] ) {
-			$date         = date_create( $aFile['upload_date'] );
-			$fileUploaded = $date;
-		} else {
-			$fileUploaded = '';
-		}
-
-		return array(
-			'path'     => $url . $thumbOrgPath . '/' . $filename . '.' . $extention,
-			'web'      => ! $noThumb ? $url . $thumbWebPath . '/' . $filename . '.jpg' : '',
-			'ext'      => $extention,
-			'name'     => $filename,
-			'dim'      => $fileDim,
-			'size'     => $fileSize,
-			'uploaded' => $fileUploaded,
-			'domain'   => $url
-		);
+		return get_object_vars($aFile);
 	}
 
 	public function getRequestId() {
