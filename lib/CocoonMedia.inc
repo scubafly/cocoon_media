@@ -28,7 +28,7 @@ class CocoonMedia extends MediaBrowserPlugin {
     $build = array();
     $params = $this->params;
     $params['cocoon'] = TRUE;
-    $build['form'] = drupal_get_form('media_pixabay_external', $params);
+    $build['form'] = drupal_get_form('cocoon_media_external', $params);
 
     return $build;
   }
