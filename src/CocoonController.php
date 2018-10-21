@@ -1,5 +1,7 @@
 <?php
+namespace Drupal\cocoon_media_management;
 
+use Symfony\Component\Debug;
 /**
  * @Plugin(
  *
@@ -32,7 +34,7 @@ class CocoonController {
 		$oAuth->requestId = $requestId;
 		$oAuth->hash = $hash;
 
-		$oSoapClient = new \SoapClient( $wsdl );
+		$oSoapClient = new \SoapClient( $wsdl , array('exceptions' => 0));
 		$SoapHeader = new \SoapHeader( 'auth', 'authenticate', $oAuth );
 		$oSoapClient->__setSoapHeaders( $SoapHeader );
 
@@ -124,72 +126,79 @@ class CocoonController {
 	}
 
 	public function getFile( $fileId ) {
-		try {
+		try {			
 			$output = self::SoapClient(
 				$this->getRequestId(),
 				$this->subdomain,
 				$this->username,
 				$this->secretkey)->getFile( $fileId );
-		} catch ( SoapFault $oSoapFault ) {
-			$output = $oSoapFault;
-		}
+			}
+			catch ( SoapFault $oSoapFault ) {
+				$output = $oSoapFault;
+				watchdog_exception('file', $oSoapFault);
+			}
 
 		return $output;
 	}
 
 	public function getThumbInfo( $fileId ) {
-		$subDomain  = $this->subdomain;
-		$domainName = self::$domainName;
-		$url        = "https://{$subDomain}.{$domainName}";
-		$thumbOrg   = 'original';
-		$thumbWeb   = '400px';
+		try {
+			$subDomain  = $this->subdomain;
+			$domainName = self::$domainName;
+			$url        = "https://{$subDomain}.{$domainName}";
+			$thumbOrg   = 'original';
+			$thumbWeb   = '400px';
 
-		$noThumb = true;
+			$noThumb = true;
 
-		$aThumbTypes  = $this->getThumbTypes();
-		$thumbOrgPath = $aThumbTypes[ $thumbOrg ]['path'];
-		$thumbWebPath = $aThumbTypes[ $thumbWeb ]['path'];
+			$aThumbTypes  = $this->getThumbTypes();
+			$thumbOrgPath = $aThumbTypes[ $thumbOrg ]['path'];
+			$thumbWebPath = $aThumbTypes[ $thumbWeb ]['path'];
 
-		$aFile     = $this->getFile( $fileId );
-		if(gettype($aFile) == 'array') {
-			$filename  = $aFile['filename'];
-			$extention = strtolower( $aFile['extension'] );
+			$aFile     = $this->getFile( $fileId );
+			if(gettype($aFile) == 'array') {
+				$filename  = $aFile['filename'];
+				$extention = strtolower( $aFile['extension'] );
 
-			if ( $extention === 'jpg' ||
-				$extention === 'jpeg' ||
-				$extention === 'png' ||
-				$extention === 'gif' ||
-				$extention === 'tiff' ||
-				$extention === 'tif' ||
-				$extention === 'bmp'
-			) {
-				$noThumb = false;
+				if ( $extention === 'jpg' ||
+					$extention === 'jpeg' ||
+					$extention === 'png' ||
+					$extention === 'gif' ||
+					$extention === 'tiff' ||
+					$extention === 'tif' ||
+					$extention === 'bmp'
+				) {
+					$noThumb = false;
+				}
+
+				$fileDim  = $aFile['width'] && $aFile['height'] ? $aFile['width'] . ' x ' . $aFile['height'] : '';
+				$fileSize = $aFile['size'] ? round( $aFile['size'] / 1024 ) . ' KB' : '';
+
+				if ( $aFile['upload_date'] ) {
+					$date         = date_create( $aFile['upload_date'] );
+					$fileUploaded = $date;
+				} else {
+					$fileUploaded = '';
+				}
+
+				$thumb_ext = 'jpg';
+				if($extention == 'gif' || $extention == 'png' || $extention == 'jpg') {
+					$thumb_ext = $extention;
+				}
+				return array(
+					'path'     => $url . $thumbOrgPath . '/' . $filename . '.' . $extention,
+					'web'      => ! $noThumb ? $url . $thumbWebPath . '/' . $filename . '.' . $thumb_ext : '',
+					'ext'      => $extention,
+					'name'     => $filename,
+					'dim'      => $fileDim,
+					'size'     => $fileSize,
+					'uploaded' => $fileUploaded,
+					'domain'   => $url
+				);
 			}
-
-			$fileDim  = $aFile['width'] && $aFile['height'] ? $aFile['width'] . ' x ' . $aFile['height'] : '';
-			$fileSize = $aFile['size'] ? round( $aFile['size'] / 1024 ) . ' KB' : '';
-
-			if ( $aFile['upload_date'] ) {
-				$date         = date_create( $aFile['upload_date'] );
-				$fileUploaded = $date;
-			} else {
-				$fileUploaded = '';
-			}
-
-			$thumb_ext = 'jpg';
-			if($extention == 'gif' || $extention == 'png' || $extention == 'jpg') {
-				$thumb_ext = $extention;
-			}
-			return array(
-				'path'     => $url . $thumbOrgPath . '/' . $filename . '.' . $extention,
-				'web'      => ! $noThumb ? $url . $thumbWebPath . '/' . $filename . '.' . $thumb_ext : '',
-				'ext'      => $extention,
-				'name'     => $filename,
-				'dim'      => $fileDim,
-				'size'     => $fileSize,
-				'uploaded' => $fileUploaded,
-				'domain'   => $url
-			);
+		}
+		catch ( SoapFault $oSoapFault ) {
+			$aFile = $oSoapFault;
 		}
 		return get_object_vars($aFile);
 	}

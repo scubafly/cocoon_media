@@ -21,15 +21,14 @@ function cocoon_media_management_theme($existing, $type, $theme, $path) {
   return $variables;
 }
 
-// /**
-//  * Template preprocess function for Lorem ipsum.
-//  *
-//  * @param array $variables
-//  *   An associative array containing:
-//  *   - source_text
-//  */
-// function template_preprocess_cocoon_media_management(&$variables) {
-//   foreach ($variables['source_text'] as $idx => $media_item) {
-//     $variables['source_text'][$idx] = $media_item;
-//   }
-// }
+function getCachedData($cid, $function_name, $params = []) {
+  $data = null;
+  if ($cache = \Drupal::cache()->get($cid)) {
+    $data = $cache->data;
+  }
+  else {
+    $data = call_user_func_array($function_name, $params);
+    \Drupal::cache()->set($cid, $data);
+  }
+  return $data;
+}

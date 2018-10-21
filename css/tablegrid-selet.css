@@ -2,6 +2,10 @@
  * @form-element tablegrid-selet.css
  */
 
+ .cocoon-media-management-add-media-form .form-actions .button:last-child {
+    margin-left: 0;
+ }
+
 .cocoon-media-management-add-media-form table thead th:first-child {
   display: none;
 }

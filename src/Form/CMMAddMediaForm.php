@@ -9,6 +9,7 @@ use Drupal\Core\Link;
 use Drupal\Core\Url;
 use Drupal\file\Entity\File;
 use Drupal\media\Entity\Media;
+use Drupal\Component\Utility\SafeMarkup;
 
 class CMMAddMediaForm extends ConfigFormBase {
   // Default settings.
@@ -74,17 +75,77 @@ class CMMAddMediaForm extends ConfigFormBase {
         '#options' => $radio_sets,
         '#ajax' => array(
           'callback' => array($this, 'ajaxCallbackGetFilesBySet'),
-          'wrapper' => 'images-table',
+          'wrapper' => 'cocoon-results',
           'effect' => 'fade',
         ),
       );
-
+      
       $set = 'all';
+      $tag_name = '';
+      $current_page = 0;
+      $total_pages = 1;
       $values = $form_state->getValues();
       if(!empty($values)) {
         $set = $values['cocoon_media_browser']['sets'];
+        $tag_name = $values['cocoon_media_browser']['tag_elements']['tag_name'];
+        $current_page = $values['cocoon_media_browser']['results']['pager_actions']['page'];
+        if($values['op'] == '>') {
+          $current_page += 1;
+        }
+        else if($values['op'] == '<') {
+          $current_page -= 1;
+        }
       }
-      $form['cocoon_media_browser']['images_table'] = $this->buildTableSelect('images-table', $set);
+      $options = $this->buildOptionsElements($set, $tag_name);
+      $options_chunk = array_chunk($options, 20, true);
+      $total_pages = count($options_chunk);
+      $current_page = $current_page < 0 ? 0 : $current_page;
+      $current_page = $current_page >= $total_pages ? $total_pages - 1 : $current_page;
+      $form['cocoon_media_browser']['tag_elements'] = array(
+        '#prefix' => '<div class="container-inline">', 
+        '#suffix' => '</div>',
+      );
+      $form['cocoon_media_browser']['tag_elements']['tag_name'] = array(
+        '#type' => 'textfield',
+        '#placeholder' => t('Search by tag'),
+        '#default_value' => $tag_name ? $tag_name : '',
+        // '#autocomplete_path' => 'cocoon_media/search_tag',
+        '#size' => '20',
+        '#maxlength' => '60',
+      );
+      $form['cocoon_media_browser']['tag_elements']['tag_search'] = array(
+        '#type' => 'button',
+        '#value' => t('Search'),
+        '#ajax' => array(
+          'callback' => array($this, 'ajaxCallbackGetFilesBySet'),
+          'wrapper' => 'cocoon-results',
+          'effect' => 'fade',
+          'prevent' => 'onfocus',
+          'keypress' => true,
+        ),
+      );
+
+      $form['cocoon_media_browser']['results'] = array(
+        '#prefix' => '<div id="cocoon-results">',
+        '#suffix' => '</div>',
+      );
+
+      $ajax_call = array(
+        'callback' => array($this, 'ajaxCallbackGetFilesBySet'),
+        'wrapper' => 'cocoon-results',
+        'effect' => 'fade',
+        'progress' => array(
+          'message' => '',
+        ),
+      );
+      // dpm([
+      //   'page' => $current_page,
+      //   'of' => $total_pages,
+      //   'found' => count($options_chunk[$current_page]),
+      //   'total' => count($options),
+      //   ]);
+      $form['cocoon_media_browser']['results'] = array_merge($form['cocoon_media_browser']['results'], $this->buildAjaxPager($ajax_call, $current_page, $total_pages));
+      $form['cocoon_media_browser']['results']['images_table'] = $this->buildTableSelect('images-table', $options_chunk[$current_page]);
     }
     else {
       // CMM Label
@@ -210,22 +271,55 @@ class CMMAddMediaForm extends ConfigFormBase {
     drupal_set_message($this->t("The File(s) <i>$filenames</i> has been added to the media library."));
   }
 
-  public function buildOptionsElements($set_id) {
-    $image_list = [];
-    if(!empty($set_id)) {
-      if($set_id !== 'all')
-      {
-        $image_list = $this->cocoonController->getFilesBySet($set_id);
-      }
-      else {
-        foreach($this->cocoonController->getSets() as $set) {
-          $image_list = array_merge($image_list, $this->cocoonController->getFilesBySet($set['id']));
-        }
+  function getFilesByTag($tag_name) {
+    $tags_images_list = [];
+    $tags_list = null;
+    $matches = [];
+    $tags_list = getCachedData('cocoon_media:all_tags', [$this->cocoonController, 'getTags']);
+    foreach ($tags_list as $tag) {
+      $string_found = $tag_name ? strpos($tag['name'], $tag_name) : true;
+      if($string_found !== false){
+        $matches[$tag['id']] = SafeMarkup::checkPlain($tag['name'])->__toString();
       }
     }
-    $options = [];
-    foreach($image_list as $idx => $image_info) {
-      $thumb_url = '/' . drupal_get_path('module', 'cocoon_media_management')
+    foreach($matches as $tag_id => $tag) {
+      $tag_files = getCachedData('cocoon_media:tag_' . $tag_id, [$this->cocoonController, 'getFilesByTag'], [$tag_id]);
+      $tags_images_list = array_merge($tags_images_list, $tag_files);
+      break;
+    }
+    return $tags_images_list;
+  }
+
+  function buildAjaxPager($ajax_callback, $current_page = 0, $total_pages = 0) {
+    $form_ajax_pager['pager_actions'] = array(
+      '#type' => 'actions',
+      '#weight' => 0,
+    );
+    $form_ajax_pager['pager_actions']['prev'] = array(
+      '#type' => 'button',
+      '#value' => '<',
+      '#ajax' => $ajax_callback,
+    );
+    $form_ajax_pager['pager_actions']['page'] = array(
+      '#type' => 'hidden',
+      '#value' => $current_page,
+    );
+    $form_ajax_pager['pager_actions']['pagenum'] = array(
+      '#type' => 'button',
+      '#value' => $current_page + 1 . ' of ' . $total_pages,
+      '#disabled' => true,
+    );
+    $form_ajax_pager['pager_actions']['next'] = array(
+      '#type' => 'button',
+      '#value' => '>',
+      '#ajax' => $ajax_callback,
+    );
+
+    return $form_ajax_pager;
+  }
+
+  function buildSingleOptionElement($image_info) {
+    $thumb_url = '/' . drupal_get_path('module', 'cocoon_media_management')
       . '/images/generic.png';
       $thumb = $this->remoteThumbToLocal($image_info, 'thumb_', true);
       if(!empty($thumb)) {
@@ -247,7 +341,6 @@ class CMMAddMediaForm extends ConfigFormBase {
           'class' => 'media-thumb',
           'style' => "background-image:url(" . $thumb_url . ")",
         ],
-        // '#markup' => "<div class='media-thumb' style='background-image:url($thumb_url)'></div>",
       ];
       $elm['title'] = [
         '#type' => 'label',
@@ -262,19 +355,40 @@ class CMMAddMediaForm extends ConfigFormBase {
                     . round($image_info['size']/1024, 2)
                     . 'KB</p>',
       ];
+      $rendered_item = \Drupal::service('renderer')->renderPlain($elm);
+      return $rendered_item;
+  }
 
+  public function buildOptionsElements($set_id, $tag_name = null) {
+    $image_list = [];
+    if(!empty($set_id)) {
+      if($set_id !== 'all')
+      {
+        $image_list = getCachedData('cocoon_media:set_' . $set_id, [$this->cocoonController, 'getFilesBySet'], [$set_id]);
+      }
+      else {
+        foreach($this->cocoonController->getSets() as $set) {
+          $image_list = array_merge($image_list, getCachedData('cocoon_media:set_' . $set['id'], [$this->cocoonController, 'getFilesBySet'], [$set['id']]));
+        }
+      }
+    }
+    $tags_list = $this->getFilesByTag($tag_name);
+    $image_list = array_merge($image_list, $tags_list);
+    
+    $options = [];
+    foreach($image_list as $idx => $image_info) {
+      $rendered_item = getCachedData('cocoon_media:option_item_' . $image_info['id'], [$this, 'buildSingleOptionElement'], [$image_info]);
       $options[$image_info['id']] = [
-        'media_item' => \Drupal::service('renderer')->renderPlain($elm),
+        'media_item' => $rendered_item,
       ];
     }
     return $options;
   }
 
-  public function buildTableSelect($class_id, $set_id) {
+  public function buildTableSelect($class_id, $options) {
     $header = [
         'media_item' => t('Media File'),
     ];
-    $options = $this->buildOptionsElements($set_id);
     $table = array(
       '#type' => 'tableselect',
       '#header' => $header,
@@ -293,7 +407,7 @@ class CMMAddMediaForm extends ConfigFormBase {
   }
 
   public function ajaxCallbackGetFilesBySet(array &$form, FormStateInterface &$form_state) {
-    return $form['cocoon_media_browser']['images_table'];
+    return $form['cocoon_media_browser']['results'];
   }
 
   /**
