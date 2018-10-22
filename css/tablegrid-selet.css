@@ -77,9 +77,6 @@
   min-width: 20px;
   min-height: 20px;
 }
-.cocoon-media-management-add-media-form table tbody tr td input[type="checkbox"]:checked
-, .cocoon-media-management-add-media-form table tbody tr td input[type="radio"]:checked {
-}
 
 .cocoon-media-management-add-media-form table tbody tr .media-thumb {
   width: 100%;

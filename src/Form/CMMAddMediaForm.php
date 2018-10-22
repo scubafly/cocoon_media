@@ -87,7 +87,7 @@ class CMMAddMediaForm extends ConfigFormBase {
       $values = $form_state->getValues();
       if(!empty($values)) {
         $set = $values['cocoon_media_browser']['sets'];
-        $tag_name = $values['cocoon_media_browser']['tag_elements']['tag_name'];
+        $tag_name = $values['cocoon_media_browser']['tag_elements']['tagname'];
         $current_page = $values['cocoon_media_browser']['results']['pager_actions']['page'];
         if($values['op'] == '>') {
           $current_page += 1;
@@ -105,11 +105,11 @@ class CMMAddMediaForm extends ConfigFormBase {
         '#prefix' => '<div class="container-inline">', 
         '#suffix' => '</div>',
       );
-      $form['cocoon_media_browser']['tag_elements']['tag_name'] = array(
+      $form['cocoon_media_browser']['tag_elements']['tagname'] = array(
         '#type' => 'textfield',
         '#placeholder' => t('Search by tag'),
-        '#default_value' => $tag_name ? $tag_name : '',
-        // '#autocomplete_path' => 'cocoon_media/search_tag',
+        '#autocomplete_route_name' => 'cocoon_media_management.tag_autocomplete',
+        // '#autocomplete_route_parameters' => array('tag_name' => strval($tag_name)),
         '#size' => '20',
         '#maxlength' => '60',
       );

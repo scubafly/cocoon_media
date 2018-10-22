@@ -1,11 +1,3 @@
-cocoon_media_management.content:
-  path: '/cocoon_media_management'
-  defaults:
-    _controller: '\Drupal\cocoon_media_management\Controller\CMMController::content'
-    _title: 'CMM Test'
-  requirements:
-    _permission: 'access content'
-
 cocoon_media_management.admin_settings:
   path: '/admin/config/media/cocoon_media_settings'
   defaults:
@@ -25,4 +17,13 @@ cocoon_media_management.cocoon_media_add:
     _admin_route: TRUE
   requirements:
     _permission: 'administer site configuration'
+
+cocoon_media_management.tag_autocomplete:
+  path: '/cocoon_media/tag_autocomplete/{tag_name}'
+  defaults:
+    _controller: '\Drupal\cocoon_media_management\Controller\CMMController::getTagsAutocomplete'
+    _format: json
+    tag_name: ''
+  requirements:
+    _access: 'TRUE'
 
