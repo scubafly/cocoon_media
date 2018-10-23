@@ -40,9 +40,9 @@ function cocoon_media_management_admin() {
   );
   $form['cocoon_media_settings']['paging_size'] = array(
     '#type' => 'textfield',
-    '#title' => t('Cocoon Username'),
+    '#title' => t('Paging size'),
     '#default_value' => cocoon_media_management_get_setting('paging_size', 20),
-    '#description' => t('Your Cocoon Username'),
+    '#description' => t('How many items to show per page.'),
     '#required' => TRUE,
   );
   if(!empty(cocoon_media_management_get_setting('cocoon_api_key'))
