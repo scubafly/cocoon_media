@@ -18,6 +18,7 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-start;
+  min-height: 100px;
 }
 
 [id^="cocoon-media-management-external"] table tbody tr {
@@ -82,10 +83,6 @@
   min-width: 20px;
   min-height: 20px;
 }
-
-/* [id^="cocoon-media-management-external"] table tbody tr td input[type="checkbox"]:checked
-, [id^="cocoon-media-management-external"] table tbody tr td input[type="radio"]:checked {
-} */
 
 [id^="cocoon-media-management-external"] table tbody tr .media-thumb {
   width: 100%;
