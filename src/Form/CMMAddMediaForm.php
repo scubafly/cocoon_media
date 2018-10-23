@@ -97,7 +97,7 @@ class CMMAddMediaForm extends ConfigFormBase {
         }
       }
       $options = $this->buildOptionsElements($set, $tag_name);
-      $options_chunk = array_chunk($options, 20, true);
+      $options_chunk = array_chunk($options, $this->config->get('CMM.paging_size'), true);
       $total_pages = count($options_chunk);
       $current_page = $current_page < 0 ? 0 : $current_page;
       $current_page = $current_page >= $total_pages ? $total_pages - 1 : $current_page;
@@ -288,7 +288,6 @@ class CMMAddMediaForm extends ConfigFormBase {
     foreach($matches as $tag_id => $tag) {
       $tag_files = getCachedData('cocoon_media:tag_' . $tag_id, [$this->cocoonController, 'getFilesByTag'], [$tag_id]);
       $tags_images_list = array_merge($tags_images_list, $tag_files);
-      break;
     }
     return $tags_images_list;
   }
@@ -364,23 +363,37 @@ class CMMAddMediaForm extends ConfigFormBase {
 
   public function buildOptionsElements($set_id, $tag_name = null) {
     $image_list = [];
+    $sets_image_list = [];
     if(!empty($set_id)) {
       if($set_id !== 'all')
       {
-        $image_list = getCachedData('cocoon_media:set_' . $set_id, [$this->cocoonController, 'getFilesBySet'], [$set_id]);
+        $sets_image_list = getCachedData('cocoon_media:set_' . $set_id, [$this->cocoonController, 'getFilesBySet'], [$set_id]);
       }
       else {
         foreach($this->cocoonController->getSets() as $set) {
-          $image_list = array_merge($image_list, getCachedData('cocoon_media:set_' . $set['id'], [$this->cocoonController, 'getFilesBySet'], [$set['id']]));
+          $sets_image_list = array_merge($sets_image_list, getCachedData('cocoon_media:set_' . $set['id'], [$this->cocoonController, 'getFilesBySet'], [$set['id']]));
         }
       }
     }
-    $tags_list = $this->getFilesByTag($tag_name);
-    if($tag_name == null) {
-      $image_list = array_merge($image_list, $tags_list);
+    $image_list = $sets_image_list;
+
+    $tags_images_list = $this->getFilesByTag($tag_name);
+    if($tag_name == null && $set_id == 'all') {
+      $image_list = array_merge($sets_image_list, $tags_images_list);
     }
-    else {
-      $image_list = $tags_list;
+    else if($tag_name != null && $set_id == 'all') {
+      $image_list = $tags_images_list;
+    }
+    else if($tag_name && $set_id !== 'all') {
+      $image_list = array();
+      foreach($sets_image_list as $set_image){
+        foreach($tags_images_list as $tag_image) {
+          if($tag_image['id'] == $set_image['id'])
+          {
+            $image_list[$set_image['id']] = $tag_image;
+          }
+        }
+      }
     }
 
     $options = [];

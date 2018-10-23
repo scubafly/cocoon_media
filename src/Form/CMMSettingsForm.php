@@ -48,12 +48,19 @@ class CMMSettingsForm extends ConfigFormBase {
       '#default_value' => $config->get('CMM.domain'),
       '#description' => $this->t('Your Cocoon domain (is the first part of the url of your cocoon site)'),
     );
-    // CMM domain
+    // CMM username
     $form['cocoon_media_settings']['username'] = array(
       '#type' => 'textfield',
       '#title' => $this->t('Cocoon Username'),
       '#default_value' => $config->get('CMM.username'),
       '#description' => $this->t('Your Cocoon Username'),
+    );
+    // CMM pagination size
+    $form['cocoon_media_settings']['paging_size'] = array(
+      '#type' => 'textfield',
+      '#title' => $this->t('Pager size'),
+      '#default_value' => $config->get('CMM.paging_size'),
+      '#description' => $this->t('How many items per page'),
     );
 
     if(!empty($config->get('CMM.api_key'))
@@ -92,6 +99,7 @@ class CMMSettingsForm extends ConfigFormBase {
     $config->set('CMM.api_key', $form_values['api_key']);
     $config->set('CMM.domain', $form_values['domain']);
     $config->set('CMM.username', $form_values['username']);
+    $config->set('CMM.paging_size', $form_values['paging_size']);
     $config->save();
     return parent::submitForm($form, $form_state);
   }
