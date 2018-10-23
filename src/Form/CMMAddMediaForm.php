@@ -138,12 +138,7 @@ class CMMAddMediaForm extends ConfigFormBase {
           'message' => '',
         ),
       );
-      // dpm([
-      //   'page' => $current_page,
-      //   'of' => $total_pages,
-      //   'found' => count($options_chunk[$current_page]),
-      //   'total' => count($options),
-      //   ]);
+      
       $form['cocoon_media_browser']['results'] = array_merge($form['cocoon_media_browser']['results'], $this->buildAjaxPager($ajax_call, $current_page, $total_pages));
       $form['cocoon_media_browser']['results']['images_table'] = $this->buildTableSelect('images-table', $options_chunk[$current_page]);
     }
@@ -206,14 +201,22 @@ class CMMAddMediaForm extends ConfigFormBase {
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
     $values = $form_state->getValues();
-    $selected_images = $values['cocoon_media_browser']['images_table'];
+    $selected_images = $values['cocoon_media_browser']['results']['images_table'];
     $filenames = '';
     foreach($selected_images as $selected_image_id) {
       if($selected_image_id) {
         $file_info = $this->cocoonController->getThumbInfo($selected_image_id);
+        if(!empty($file_info['faultstring'])) {
+          drupal_set_message($this->t("The File(s) cannot be added to the media library. Error message: " . $file_info['faultstring']), 'error');
+          return;
+        }
         $url = $file_info['path'];
         // Check the cache and download the file if needed.
         $file = $this->retrieveRemoteFile($url);
+        if (empty($file)) {
+          drupal_set_message($this->t("The File(s) cannot be added to the media library."), 'error');
+          return;
+        }
         $media_bundle = 'file';
         if ( $file_info['ext'] === 'jpg' ||
             $file_info['ext'] === 'jpeg' ||
@@ -373,8 +376,13 @@ class CMMAddMediaForm extends ConfigFormBase {
       }
     }
     $tags_list = $this->getFilesByTag($tag_name);
-    $image_list = array_merge($image_list, $tags_list);
-    
+    if($tag_name == null) {
+      $image_list = array_merge($image_list, $tags_list);
+    }
+    else {
+      $image_list = $tags_list;
+    }
+
     $options = [];
     foreach($image_list as $idx => $image_info) {
       $rendered_item = getCachedData('cocoon_media:option_item_' . $image_info['id'], [$this, 'buildSingleOptionElement'], [$image_info]);
