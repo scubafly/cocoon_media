@@ -63,6 +63,17 @@ class CMMAddMediaForm extends ConfigFormBase {
     $form['cocoon_media_browser']['description'] = array(
       '#markup' => t("Browse and add Cocoon Media to your library.") . '<br/>',
     );
+    $form['cocoon_media_browser']['clear_cache'] = array(
+      '#type' => 'button',
+      '#value' => t('Refresh library'),
+      '#ajax' => array(
+        'callback' => array($this, 'refreshLibrary'),
+        'wrapper' => 'edit-cocoon-media-browser',
+        'effect' => 'fade',
+        'prevent' => 'onfocus',
+        'keypress' => true,
+      ),
+    );
 
     // Add the follwing form elements only if the module API is configured.
     if(!empty($this->config->get('CMM.api_key'))
@@ -278,7 +289,7 @@ class CMMAddMediaForm extends ConfigFormBase {
     $tags_images_list = [];
     $tags_list = null;
     $matches = [];
-    $tags_list = getCachedData('cocoon_media:all_tags', [$this->cocoonController, 'getTags']);
+    $tags_list = getCachedData('cocoon_media:all_tags', [$this->cocoonController, 'getTags'], [], $this->config->get('CMM.cache_duration'));
     foreach ($tags_list as $tag) {
       $string_found = $tag_name ? strpos($tag['name'], $tag_name) : true;
       if($string_found !== false){
@@ -286,7 +297,7 @@ class CMMAddMediaForm extends ConfigFormBase {
       }
     }
     foreach($matches as $tag_id => $tag) {
-      $tag_files = getCachedData('cocoon_media:tag_' . $tag_id, [$this->cocoonController, 'getFilesByTag'], [$tag_id]);
+      $tag_files = getCachedData('cocoon_media:tag_' . $tag_id, [$this->cocoonController, 'getFilesByTag'], [$tag_id], $this->config->get('CMM.cache_duration'));
       $tags_images_list = array_merge($tags_images_list, $tag_files);
     }
     return $tags_images_list;
@@ -367,11 +378,11 @@ class CMMAddMediaForm extends ConfigFormBase {
     if(!empty($set_id)) {
       if($set_id !== 'all')
       {
-        $sets_image_list = getCachedData('cocoon_media:set_' . $set_id, [$this->cocoonController, 'getFilesBySet'], [$set_id]);
+        $sets_image_list = getCachedData('cocoon_media:set_' . $set_id, [$this->cocoonController, 'getFilesBySet'], [$set_id], $this->config->get('CMM.cache_duration'));
       }
       else {
         foreach($this->cocoonController->getSets() as $set) {
-          $sets_image_list = array_merge($sets_image_list, getCachedData('cocoon_media:set_' . $set['id'], [$this->cocoonController, 'getFilesBySet'], [$set['id']]));
+          $sets_image_list = array_merge($sets_image_list, getCachedData('cocoon_media:set_' . $set['id'], [$this->cocoonController, 'getFilesBySet'], [$set['id']], $this->config->get('CMM.cache_duration')));
         }
       }
     }
@@ -429,6 +440,11 @@ class CMMAddMediaForm extends ConfigFormBase {
 
   public function ajaxCallbackGetFilesBySet(array &$form, FormStateInterface &$form_state) {
     return $form['cocoon_media_browser']['results'];
+  }
+
+  public function refreshLibrary(array &$form, FormStateInterface &$form_state) {
+    drupal_flush_all_caches();
+    return $form['cocoon_media_browser'];
   }
 
   /**
