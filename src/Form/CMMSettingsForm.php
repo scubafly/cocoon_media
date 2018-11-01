@@ -59,14 +59,14 @@ class CMMSettingsForm extends ConfigFormBase {
     $form['cocoon_media_settings']['paging_size'] = array(
       '#type' => 'textfield',
       '#title' => $this->t('Pager size'),
-      '#default_value' => $config->get('CMM.paging_size') ? $config->get('CMM.paging_size') : 15,
+      '#default_value' => $config->get('CMM.paging_size', 15),
       '#description' => $this->t('How many items per page'),
     );
     // CMM cache duration in seconds
     $form['cocoon_media_settings']['cache_duration'] = array(
       '#type' => 'textfield',
       '#title' => $this->t('Cache duration'),
-      '#default_value' => $config->get('CMM.cache_duration') ? $config->get('CMM.cache_duration') : 60 * 5,
+      '#default_value' => $config->get('CMM.cache_duration', 60 * 5),
       '#description' => $this->t('How long cached data will last (in seconds).'),
     );
 

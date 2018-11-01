@@ -15,6 +15,7 @@ class CMMAddMediaForm extends ConfigFormBase {
   // Default settings.
   protected $config;
   protected $cocoonController;
+  protected $cacheDuration;
 
   /**
    * {@inheritdoc}
@@ -25,6 +26,7 @@ class CMMAddMediaForm extends ConfigFormBase {
     $this->config->get('CMM.domain'),
     $this->config->get('CMM.username'),
     $this->config->get('CMM.api_key'));
+    $this->cacheDuration = $this->config->get('CMM.cache_duration', 60*5);
   }
 
   /**
@@ -40,14 +42,6 @@ class CMMAddMediaForm extends ConfigFormBase {
   public function buildForm(array $form, FormStateInterface $form_state) {
     // Form constructor.
     $form = parent::buildForm($form, $form_state);
-    $sets = $this->cocoonController->getSets();
-    $radio_sets = [];
-    $total_count = 0;
-    foreach($sets as $set) {
-      $radio_sets[$set['id']] = $set['title'] . ' (' . $set['file_count'] . ')';
-      $total_count += $set['file_count'];
-    }
-    $radio_sets['all'] = 'All'. ' (' . $total_count . ')';
 
     $form['cocoon_media_browser'] = array(
       '#type' => 'fieldset',
@@ -63,22 +57,30 @@ class CMMAddMediaForm extends ConfigFormBase {
     $form['cocoon_media_browser']['description'] = array(
       '#markup' => t("Browse and add Cocoon Media to your library.") . '<br/>',
     );
-    $form['cocoon_media_browser']['clear_cache'] = array(
-      '#type' => 'button',
-      '#value' => t('Refresh library'),
-      '#ajax' => array(
-        'callback' => array($this, 'refreshLibrary'),
-        'wrapper' => 'edit-cocoon-media-browser',
-        'effect' => 'fade',
-        'prevent' => 'onfocus',
-        'keypress' => true,
-      ),
-    );
 
     // Add the follwing form elements only if the module API is configured.
     if(!empty($this->config->get('CMM.api_key'))
       && !empty($this->config->get('CMM.domain'))
       && !empty($this->config->get('CMM.username'))) {
+        $form['cocoon_media_browser']['clear_cache'] = array(
+          '#type' => 'button',
+          '#value' => t('Refresh library'),
+          '#ajax' => array(
+            'callback' => array($this, 'refreshLibrary'),
+            'wrapper' => 'edit-cocoon-media-browser',
+            'effect' => 'fade',
+            'prevent' => 'onfocus',
+            'keypress' => true,
+          ),
+        );
+        $sets = $this->cocoonController->getSets();
+        $radio_sets = [];
+        $total_count = 0;
+        foreach($sets as $set) {
+          $radio_sets[$set['id']] = $set['title'] . ' (' . $set['file_count'] . ')';
+          $total_count += $set['file_count'];
+        }
+        $radio_sets['all'] = 'All'. ' (' . $total_count . ')';
        $form['cocoon_media_browser']['sets'] = array(
         '#type' => 'radios',
         '#title' => t('Select a set'),
@@ -108,7 +110,7 @@ class CMMAddMediaForm extends ConfigFormBase {
         }
       }
       $options = $this->buildOptionsElements($set, $tag_name);
-      $options_chunk = array_chunk($options, $this->config->get('CMM.paging_size'), true);
+      $options_chunk = array_chunk($options, $this->config->get('CMM.paging_size', 15), true);
       $total_pages = count($options_chunk);
       $current_page = $current_page < 0 ? 0 : $current_page;
       $current_page = $current_page >= $total_pages ? $total_pages - 1 : $current_page;
@@ -289,7 +291,7 @@ class CMMAddMediaForm extends ConfigFormBase {
     $tags_images_list = [];
     $tags_list = null;
     $matches = [];
-    $tags_list = getCachedData('cocoon_media:all_tags', [$this->cocoonController, 'getTags'], [], $this->config->get('CMM.cache_duration'));
+    $tags_list = getCachedData('cocoon_media:all_tags', [$this->cocoonController, 'getTags'], [], $this->cacheDuration);
     foreach ($tags_list as $tag) {
       $string_found = $tag_name ? strpos($tag['name'], $tag_name) : true;
       if($string_found !== false){
@@ -297,7 +299,7 @@ class CMMAddMediaForm extends ConfigFormBase {
       }
     }
     foreach($matches as $tag_id => $tag) {
-      $tag_files = getCachedData('cocoon_media:tag_' . $tag_id, [$this->cocoonController, 'getFilesByTag'], [$tag_id], $this->config->get('CMM.cache_duration'));
+      $tag_files = getCachedData('cocoon_media:tag_' . $tag_id, [$this->cocoonController, 'getFilesByTag'], [$tag_id], $this->cacheDuration);
       $tags_images_list = array_merge($tags_images_list, $tag_files);
     }
     return $tags_images_list;
@@ -378,11 +380,11 @@ class CMMAddMediaForm extends ConfigFormBase {
     if(!empty($set_id)) {
       if($set_id !== 'all')
       {
-        $sets_image_list = getCachedData('cocoon_media:set_' . $set_id, [$this->cocoonController, 'getFilesBySet'], [$set_id], $this->config->get('CMM.cache_duration'));
+        $sets_image_list = getCachedData('cocoon_media:set_' . $set_id, [$this->cocoonController, 'getFilesBySet'], [$set_id], $this->cacheDuration);
       }
       else {
         foreach($this->cocoonController->getSets() as $set) {
-          $sets_image_list = array_merge($sets_image_list, getCachedData('cocoon_media:set_' . $set['id'], [$this->cocoonController, 'getFilesBySet'], [$set['id']], $this->config->get('CMM.cache_duration')));
+          $sets_image_list = array_merge($sets_image_list, getCachedData('cocoon_media:set_' . $set['id'], [$this->cocoonController, 'getFilesBySet'], [$set['id']], $this->cacheDuration));
         }
       }
     }
