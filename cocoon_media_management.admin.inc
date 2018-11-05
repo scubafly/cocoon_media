@@ -41,9 +41,16 @@ function cocoon_media_management_admin() {
   $form['cocoon_media_settings']['paging_size'] = array(
     '#type' => 'textfield',
     '#title' => t('Paging size'),
-    '#default_value' => cocoon_media_management_get_setting('paging_size', 20),
+    '#default_value' => cocoon_media_management_get_setting('paging_size', 15),
     '#description' => t('How many items to show per page.'),
     '#required' => TRUE,
+  );
+  // CMM cache duration in seconds
+  $form['cocoon_media_settings']['cache_duration'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Cache duration'),
+    '#default_value' => cocoon_media_management_get_setting('cache_duration', 60 * 5),
+    '#description' => t('How long cached data will last (in seconds).'),
   );
   if(!empty(cocoon_media_management_get_setting('cocoon_api_key'))
       && !empty(cocoon_media_management_get_setting('cocoon_domain'))
