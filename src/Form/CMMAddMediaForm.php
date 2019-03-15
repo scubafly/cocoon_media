@@ -25,12 +25,12 @@ class CMMAddMediaForm extends ConfigFormBase {
    * {@inheritdoc}
    */
   public function __construct() {
-    $this->config = $this->config('CMM.settings');
+    $this->config = $this->config('cocoon_media.settings');
     $this->cocoonController = new CocoonController(
-    $this->config->get('CMM.domain'),
-    $this->config->get('CMM.username'),
-    $this->config->get('CMM.api_key'));
-    $this->cacheDuration = $this->config->get('CMM.cache_duration') ?: 60 * 5;
+    $this->config->get('cocoon_media.domain'),
+    $this->config->get('cocoon_media.username'),
+    $this->config->get('cocoon_media.api_key'));
+    $this->cacheDuration = $this->config->get('cocoon_media.cache_duration') ?: 60 * 5;
   }
 
   /**
@@ -63,9 +63,9 @@ class CMMAddMediaForm extends ConfigFormBase {
     );
 
     // Add the follwing form elements only if the module API is configured.
-    if (!empty($this->config->get('CMM.api_key'))
-      && !empty($this->config->get('CMM.domain'))
-      && !empty($this->config->get('CMM.username'))) {
+    if (!empty($this->config->get('cocoon_media.api_key'))
+      && !empty($this->config->get('cocoon_media.domain'))
+      && !empty($this->config->get('cocoon_media.username'))) {
       $form['cocoon_media_browser']['clear_cache'] = array(
         '#type' => 'button',
         '#value' => t('Refresh library'),
@@ -114,7 +114,7 @@ class CMMAddMediaForm extends ConfigFormBase {
         }
       }
       $options = $this->buildOptionsElements($set, $tag_name);
-      $options_chunk = array_chunk($options, $this->config->get('CMM.paging_size', 15), TRUE);
+      $options_chunk = array_chunk($options, $this->config->get('cocoon_media.paging_size', 15), TRUE);
       $total_pages = count($options_chunk);
       $current_page = $current_page < 0 ? 0 : $current_page;
       $current_page = $current_page >= $total_pages ? $total_pages - 1 : $current_page;
@@ -470,7 +470,7 @@ class CMMAddMediaForm extends ConfigFormBase {
    */
   protected function getEditableConfigNames() {
     return [
-      'CMM.settings',
+      'cocoon_media.settings',
     ];
   }
 
