@@ -1,5 +1,0 @@
-tablegrid-selet:
-  version: 1.x
-  css:
-    theme:
-      css/tablegrid-selet.css: {}

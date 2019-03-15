@@ -1,8 +1,8 @@
 <?php
 
-namespace Drupal\cocoon_media_management\Form;
+namespace Drupal\cocoon_media\Form;
 
-use Drupal\cocoon_media_management\CocoonController;
+use Drupal\cocoon_media\CocoonController;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Link;
@@ -33,7 +33,7 @@ class CMMAddMediaForm extends ConfigFormBase {
    * {@inheritdoc}
    */
   public function getFormId() {
-    return 'cocoon_media_management_add_media_form';
+    return 'cocoon_media_add_media_form';
   }
 
   /**
@@ -334,7 +334,7 @@ class CMMAddMediaForm extends ConfigFormBase {
   }
 
   function buildSingleOptionElement($image_info) {
-    $thumb_url = '/' . drupal_get_path('module', 'cocoon_media_management')
+    $thumb_url = '/' . drupal_get_path('module', 'cocoon_media')
       . '/images/generic.png';
       $thumb = $this->remoteThumbToLocal($image_info, 'thumb_', true);
       if(!empty($thumb)) {
