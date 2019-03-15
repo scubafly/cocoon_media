@@ -1,5 +1,5 @@
 <?php
-namespace Drupal\cocoon_media_management;
+namespace Drupal\cocoon_media;
 
 use Symfony\Component\Debug;
 /**

@@ -1,6 +1,6 @@
 <?php
 
-namespace Drupal\cocoon_media_management;
+namespace Drupal\cocoon_media;
 
 /**
  * Base interface definition for DevelDumper plugins.

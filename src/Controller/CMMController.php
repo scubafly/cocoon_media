@@ -1,11 +1,11 @@
 <?php
 
-namespace Drupal\cocoon_media_management\Controller;
+namespace Drupal\cocoon_media\Controller;
 
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Drupal\Core\Controller\ControllerBase;
-use Drupal\cocoon_media_management\CocoonController;
+use Drupal\cocoon_media\CocoonController;
 
 class CMMController extends ControllerBase {
   // Default settings.
@@ -16,11 +16,11 @@ class CMMController extends ControllerBase {
    * {@inheritdoc}
    */
   public function __construct() {
-    $this->config = $this->config('CMM.settings');
+    $this->config = $this->config('cocoon_media.settings');
     $this->cocoonController = new CocoonController(
-    $this->config->get('CMM.domain'),
-    $this->config->get('CMM.username'),
-    $this->config->get('CMM.api_key'));
+    $this->config->get('cocoon_media.domain'),
+    $this->config->get('cocoon_media.username'),
+    $this->config->get('cocoon_media.api_key'));
   }
 
   public function getTagsAutocomplete(Request $req, $tag_name = '') {

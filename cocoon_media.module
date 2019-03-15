@@ -1,0 +1,36 @@
+<?php
+
+/**
+ * @file
+ * The module file.
+ */
+
+use Drupal\Core\Render\Markup;
+use \Drupal\Core\Cache\CacheBackendInterface;
+
+/**
+ * Implements hook_theme().
+ */
+function cocoon_media_theme($existing, $type, $theme, $path) {
+  $variables = array(
+    'tablegridselect' => array (
+      'render element' => 'element',
+      'template' => 'table_gridselect',
+    ),
+  );
+
+  return $variables;
+}
+
+function getCachedData($cid, $function_name, $params = [], $expire_time = null) {
+  $data = null;
+  if ($cache = \Drupal::cache()->get($cid)) {
+    $data = $cache->data;
+  }
+  else {
+    $data = call_user_func_array($function_name, $params);
+    $expire_time = $expire_time === null ? CacheBackendInterface::CACHE_PERMANENT : time() + $expire_time;
+    \Drupal::cache()->set($cid, $data, $expire_time);
+  }
+  return $data;
+}
