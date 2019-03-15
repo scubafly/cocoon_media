@@ -20,6 +20,20 @@ class CMMAddMediaForm extends ConfigFormBase {
   protected $config;
   protected $cocoonController;
   protected $cacheDuration;
+  protected $fileTypeImage = [
+    'jpg',
+    'jpeg',
+    'png',
+    'gif',
+    'tiff',
+    'bmp',
+  ];
+  protected $fileTypeVideo = [
+    'mp4',
+    'avi',
+    'flv',
+    'mov',
+  ];
 
   /**
    * {@inheritdoc}
@@ -100,7 +114,7 @@ class CMMAddMediaForm extends ConfigFormBase {
       $set = 'all';
       $tag_name = '';
       $current_page = 0;
-      $total_pages = 1;
+
       $values = $form_state->getValues();
       if (!empty($values)) {
         $set = $values['cocoon_media_browser']['sets'];
@@ -125,9 +139,8 @@ class CMMAddMediaForm extends ConfigFormBase {
       $form['cocoon_media_browser']['tag_elements']['tagname'] = array(
         '#type' => 'textfield',
         '#placeholder' => t('Search by tag'),
-        '#autocomplete_route_name' => 'cocoon_media.tag_autocomplete',
-        // '#autocomplete_route_parameters' =>
-        // array('tag_name' => strval($tag_name)),
+        // TODO fix autocomplete, this now breaks when user has 500+ tags.
+        // '#autocomplete_route_name' => 'cocoon_media.tag_autocomplete',.
         '#size' => '20',
         '#maxlength' => '60',
       );
@@ -263,26 +276,18 @@ class CMMAddMediaForm extends ConfigFormBase {
           'title' => $this->t($file_info['name']),
         ];
 
-        if ($file_info['ext'] === 'jpg' ||
-            $file_info['ext'] === 'jpeg' ||
-            $file_info['ext'] === 'png' ||
-            $file_info['ext'] === 'gif' ||
-            $file_info['ext'] === 'tiff' ||
-            $file_info['ext'] === 'bmp'
-        ) {
+        if (in_array($file_info['ext'], $this->fileTypeImage)) {
           $media_bundle = 'image';
           $field_media_name = 'field_media_image';
           $field_media_arr['alt'] = $file_info['name'];
         }
 
-        if ($file_info['ext'] === 'mp4'||
-            $file_info['ext'] === 'avi'||
-            $file_info['ext'] === 'flv'||
-            $file_info['ext'] === 'mov') {
+        if (in_array($file_info['ext'], $this->fileTypeVideo)) {
           $media_bundle = 'video';
           $field_media_name = 'field_media_video_file';
           $field_media_arr['alt'] = $file_info['name'];
         }
+
         // Create media entity with saved file.
         $image_media = Media::create([
           'bundle' => $media_bundle,
@@ -305,16 +310,28 @@ class CMMAddMediaForm extends ConfigFormBase {
 
   function getFilesByTag($tag_name) {
     $tags_images_list = [];
-    $tags_list = null;
+    $tags_list = NULL;
     $matches = [];
-    $tags_list = getCachedData('cocoon_media:all_tags', [$this->cocoonController, 'getTags'], [], $this->cacheDuration);
-    foreach ($tags_list as $tag) {
-      $string_found = $tag_name ? strpos($tag['name'], $tag_name) : TRUE;
-      if ($string_found !== FALSE) {
-        $matches[$tag['id']] = SafeMarkup::checkPlain($tag['name'])->__toString();
+    $tags_list = getCachedData('cocoon_media:all_tags', [
+      $this->cocoonController,
+      'getTags',
+    ], [], $this->cacheDuration);
+
+    // Do not search for tag name if the tag name is empty.
+    if (!$tag_name) {
+      $matches = array_column($tags_list, 'id');
+    }
+
+    if ($tag_name) {
+      foreach ($tags_list as $tag) {
+        $string_found = $tag_name ? strpos($tag['name'], $tag_name) : TRUE;
+        if ($string_found !== FALSE) {
+          $matches[] = $tag['id'];
+        }
       }
     }
-    foreach ($matches as $tag_id => $tag) {
+
+    foreach ($matches as $tag_id) {
       $tag_files = getCachedData('cocoon_media:tag_' . $tag_id, [$this->cocoonController, 'getFilesByTag'], [$tag_id], $this->cacheDuration);
       $tags_images_list = array_merge($tags_images_list, $tag_files);
     }
@@ -390,39 +407,26 @@ class CMMAddMediaForm extends ConfigFormBase {
     return $rendered_item;
   }
 
-  public function buildOptionsElements($set_id, $tag_name = null) {
-    $image_list = [];
-    $sets_image_list = [];
-    if (!empty($set_id)) {
-      if ($set_id !== 'all') {
-        $sets_image_list = getCachedData('cocoon_media:set_' . $set_id, [$this->cocoonController, 'getFilesBySet'], [$set_id], $this->cacheDuration);
-      }
-      else {
-        foreach ($this->cocoonController->getSets() as $set) {
-          $sets_image_list = array_merge($sets_image_list, getCachedData('cocoon_media:set_' . $set['id'], [$this->cocoonController, 'getFilesBySet'], [$set['id']], $this->cacheDuration));
-        }
-      }
-    }
-    $image_list = $sets_image_list;
+  public function buildOptionsElements($set_id, $tag_name = NULL) {
 
-    $tags_images_list = $this->getFilesByTag($tag_name);
-    if ($tag_name == null && $set_id == 'all') {
-      $image_list = array_merge($sets_image_list, $tags_images_list);
-    }
-    else if($tag_name != null && $set_id == 'all') {
-      $image_list = $tags_images_list;
-    }
-    else if($tag_name && $set_id !== 'all') {
-      $image_list = array();
-      foreach($sets_image_list as $set_image){
-        foreach($tags_images_list as $tag_image) {
-          if($tag_image['id'] == $set_image['id'])
-          {
-            $image_list[$set_image['id']] = $tag_image;
-          }
-        }
-      }
-    }
+    $image_list = $this->getImagesBySetId($set_id);
+
+//    if ($tag_name) {
+//      $tags_images_list = $this->getFilesByTag($tag_name);
+//    }
+
+//    if ($set_id !== 'all') {
+//      $image_list = [];
+//      foreach ($sets_image_list as $set_image) {
+//        foreach ($tags_images_list as $tag_image) {
+//          if ($tag_image['id'] == $set_image['id']) {
+//            $image_list[$set_image['id']] = $tag_image;
+//          }
+//        }
+//      }
+//    }
+
+//    $this->filter_set_only_images($image_list, $set_id);
 
     $options = [];
     foreach ($image_list as $idx => $image_info) {
@@ -432,6 +436,34 @@ class CMMAddMediaForm extends ConfigFormBase {
       ];
     }
     return $options;
+  }
+
+  /**
+   * Get Images by set id.
+   *
+   * @param mixed $set_id
+   *   String 'all' or Int with set_id.
+   *
+   * @return array
+   *   Images.
+   */
+  private function getImagesBySetId($set_id = 'all') {
+    $images = [];
+
+    if ($set_id !== 'all') {
+      $results = getCachedData('cocoon_media:set_' . $set_id, [$this->cocoonController, 'getFilesBySet'], [$set_id], $this->cacheDuration);
+      if ($results) {
+        $images = $results;
+      }
+    }
+
+    if ($set_id == 'all') {
+      foreach ($this->cocoonController->getSets() as $set) {
+        $images = array_merge($images, getCachedData('cocoon_media:set_' . $set['id'], [$this->cocoonController, 'getFilesBySet'], [$set['id']], $this->cacheDuration));
+      }
+    }
+
+    return $images;
   }
 
   public function buildTableSelect($class_id, $options) {

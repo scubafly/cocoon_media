@@ -146,7 +146,8 @@ class CocoonController {
 			$domainName = self::$domainName;
 			$url        = "https://{$subDomain}.{$domainName}";
 			$thumbOrg   = 'original';
-			$thumbWeb   = '400px';
+			// TODO use smallest thumb we get from the API instead of hard coding.
+			$thumbWeb   = '500px';
 
 			$noThumb = true;
 
