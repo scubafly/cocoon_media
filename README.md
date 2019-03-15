@@ -55,3 +55,4 @@ MAINTAINERS
 -----------
 
  * Leo Araki (Toshiwo) - https://www.drupal.org/u/toshiwo
+ * Jack Over (scuba_fly) - https://www.drupal.org/u/scuba_fly
