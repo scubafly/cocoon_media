@@ -16,11 +16,11 @@ class CMMController extends ControllerBase {
    * {@inheritdoc}
    */
   public function __construct() {
-    $this->config = $this->config('CMM.settings');
+    $this->config = $this->config('cocoon_media.settings');
     $this->cocoonController = new CocoonController(
-    $this->config->get('CMM.domain'),
-    $this->config->get('CMM.username'),
-    $this->config->get('CMM.api_key'));
+    $this->config->get('cocoon_media.domain'),
+    $this->config->get('cocoon_media.username'),
+    $this->config->get('cocoon_media.api_key'));
   }
 
   public function getTagsAutocomplete(Request $req, $tag_name = '') {
