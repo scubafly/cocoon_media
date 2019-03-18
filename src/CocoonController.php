@@ -1,7 +1,6 @@
 <?php
 namespace Drupal\cocoon_media_management;
 
-use Symfony\Component\Debug;
 /**
  * @Plugin(
  *

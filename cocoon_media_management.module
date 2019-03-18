@@ -5,8 +5,7 @@
  * The module file.
  */
 
-use Drupal\Core\Render\Markup;
-use \Drupal\Core\Cache\CacheBackendInterface;
+use Drupal\Core\Cache\CacheBackendInterface;
 
 /**
  * Implements hook_theme().
