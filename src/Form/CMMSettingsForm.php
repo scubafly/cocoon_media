@@ -55,6 +55,18 @@ class CMMSettingsForm extends ConfigFormBase {
       '#default_value' => $config->get('cocoon_media.username'),
       '#description' => $this->t('Your Cocoon Username'),
     );
+    $form['cocoon_media_settings']['media_image_bundle'] = array(
+      '#type' => 'textfield',
+      '#title' => $this->t('Media image bundle'),
+      '#default_value' => $config->get('cocoon_media.media_image_bundle'),
+      '#description' => $this->t('The machine name of your image bundle, if you are unsure check your <a href="/media/add">/media/add</a> page. This is your media bundle where your imported image is stored.'),
+    );
+    $form['cocoon_media_settings']['media_video_bundle'] = array(
+      '#type' => 'textfield',
+      '#title' => $this->t('Media video bundle'),
+      '#default_value' => $config->get('cocoon_media.media_image_bundle'),
+      '#description' => $this->t('The machine name of your image bundle, if you are unsure check your <a href="/media/add">/media/add</a> page. This is your media bundle where your imported video is stored.'),
+    );
     // CMM pagination size
     $form['cocoon_media_settings']['paging_size'] = array(
       '#type' => 'textfield',
@@ -108,6 +120,8 @@ class CMMSettingsForm extends ConfigFormBase {
     $config->set('cocoon_media.username', $form_values['username']);
     $config->set('cocoon_media.paging_size', $form_values['paging_size']);
     $config->set('cocoon_media.cache_duration', $form_values['cache_duration']);
+    $config->set('cocoon_media.media_image_bundle', $form_values['media_image_bundle']);
+    $config->set('cocoon_media.media_video_bundle', $form_values['media_video_bundle']);
     $config->save();
     return parent::submitForm($form, $form_state);
   }

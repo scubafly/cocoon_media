@@ -8,7 +8,6 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Link;
 use Drupal\Core\Url;
 use Drupal\media\Entity\Media;
-use Drupal\Component\Utility\SafeMarkup;
 
 /**
  * Class CMMAddMediaForm.
@@ -34,6 +33,8 @@ class CMMAddMediaForm extends ConfigFormBase {
     'flv',
     'mov',
   ];
+  protected $mediaImageBundle = '';
+  protected $mediaVideoBundle = '';
 
   /**
    * {@inheritdoc}
@@ -41,9 +42,12 @@ class CMMAddMediaForm extends ConfigFormBase {
   public function __construct() {
     $this->config = $this->config('cocoon_media.settings');
     $this->cocoonController = new CocoonController(
-    $this->config->get('cocoon_media.domain'),
-    $this->config->get('cocoon_media.username'),
-    $this->config->get('cocoon_media.api_key'));
+      $this->config->get('cocoon_media.domain'),
+      $this->config->get('cocoon_media.username'),
+      $this->config->get('cocoon_media.api_key')
+    );
+    $this->mediaImageBundle = $this->config->get('cocoon_media.media_image_bundle');
+    $this->mediaVideoBundle = $this->config->get('cocoon_media.media_video_bundle');
     $this->cacheDuration = $this->config->get('cocoon_media.cache_duration') ?: 60 * 5;
   }
 
@@ -234,15 +238,19 @@ class CMMAddMediaForm extends ConfigFormBase {
    *   TODO add description.
    */
   public function remoteThumbToLocal(array $image_info, $prefix) {
-    $local_path = '';
     $filename = $prefix . $image_info['filename'] . '.' . $image_info['extension'];
-    if (!empty($filename)) {
-      $local_path = 'public://cocoon_media_files/' . $filename;
-      if (!file_exists($local_path)) {
-        $thumb_info = $this->cocoonController->getThumbInfo($image_info['id']);
-        if (empty($thumb_info['web'])) {
-          $local_path = '';
-        }
+    $local_path = 'public://cocoon_media_files/' . $filename;
+
+    if (empty($filename)) {
+      return '';
+    }
+    if (!file_exists($local_path)) {
+      $thumb_info = $this->cocoonController->getThumbInfo($image_info['id']);
+      if (empty($thumb_info['web'])) {
+        return '';
+      }
+      if (!empty($thumb_info['web'])) {
+        $this->retrieveRemoteFile($thumb_info['web'], $local_path);
       }
     }
     return $local_path;
@@ -264,39 +272,57 @@ class CMMAddMediaForm extends ConfigFormBase {
         }
         $url = $file_info['path'];
         // Check the cache and download the file if needed.
+        /** @var \Drupal\file\Entity\File $file */
         $file = $this->retrieveRemoteFile($url);
         if (empty($file)) {
           drupal_set_message($this->t("The File(s) cannot be added to the media library."), 'error');
           return;
         }
+
         $media_bundle = 'file';
         $field_media_name = 'field_media_file';
-        $field_media_arr = [
-          'target_id' => $file->id(),
-          'title' => $this->t($file_info['name']),
-        ];
 
         if (in_array($file_info['ext'], $this->fileTypeImage)) {
+          // TODO replace with generic image bundle
+          // or make configurable what the bundle is.
           $media_bundle = 'image';
+          if ($this->mediaImageBundle) {
+            $media_bundle = $this->mediaImageBundle;
+          }
           $field_media_name = 'field_media_image';
-          $field_media_arr['alt'] = $file_info['name'];
         }
 
         if (in_array($file_info['ext'], $this->fileTypeVideo)) {
+          // TODO replace with generic video bundle
+          // or make configurable what the bundle is.
           $media_bundle = 'video';
+          if ($this->mediaImageBundle) {
+            $media_bundle = $this->mediaVideoBundle;
+          }
           $field_media_name = 'field_media_video_file';
-          $field_media_arr['alt'] = $file_info['name'];
         }
 
         // Create media entity with saved file.
-        $image_media = Media::create([
+        // TODO use entitystoragemanager.
+        $media = Media::create([
           'bundle' => $media_bundle,
-          'uid' => \Drupal::currentUser()->id(),
           'langcode' => \Drupal::languageManager()->getDefaultLanguage()->getId(),
           'name' => $file_info['name'],
-          $field_media_name => $field_media_arr,
+          $field_media_name => [
+            'target_id' => $file->id(),
+            'alt' => $file_info['name'],
+            'title' => $file_info['name'],
+          ],
         ]);
-        $image_media->save();
+
+        // TODO check media bundle exist before calling media->save();
+        // if not show error below:
+        // drupal_set_message($this->t("Have you set the correct bundle
+        // in the cocoon_media module"), 'error');.
+        $media->save();
+
+        // TODO use dependency injection.
+        $media->setOwnerId(\Drupal::currentUser()->id());
         $filenames .= $file_info['name'] . ', ';
       }
     }

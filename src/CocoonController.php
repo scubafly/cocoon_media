@@ -156,7 +156,7 @@ class CocoonController {
 			$thumbWebPath = $aThumbTypes[ $thumbWeb ]['path'];
 
 			$aFile     = $this->getFile( $fileId );
-			if(gettype($aFile) == 'array') {
+			if(is_array($aFile)) {
 				$filename  = $aFile['filename'];
 				$extention = strtolower( $aFile['extension'] );
 
