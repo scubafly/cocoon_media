@@ -4,3 +4,4 @@ cocoon_media.link_add:
   weight: 11
   appears_on:
     - entity.media.collection
+    - entity.media.add_page

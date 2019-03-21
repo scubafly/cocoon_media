@@ -6,7 +6,7 @@ cocoon_media.admin_settings:
   options:
     _admin_route: TRUE
   requirements:
-    _permission: 'administer site configuration'
+    _permission: 'administer cocoon media configuration'
 
 cocoon_media.cocoon_media_add:
   path: '/media/add/cocoon_media_add'
@@ -16,7 +16,7 @@ cocoon_media.cocoon_media_add:
   options:
     _admin_route: TRUE
   requirements:
-    _permission: 'administer site configuration'
+    _permission: 'add cocoon media items'
 
 cocoon_media.tag_autocomplete:
   path: '/cocoon_media/tag_autocomplete/{tag_name}'
